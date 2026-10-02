@@ -36,15 +36,6 @@ export default function RootLayout({
                 Daily Gambit
               </Link>
               <nav className="headerNav" aria-label="Main">
-                <a
-                  className="headerLink"
-                  href="https://www.chess.com/news/view/published-data-api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span aria-hidden="true">⚡</span>
-                  <span className="label">Chess.com API</span>
-                </a>
                 <a className="headerLink" href={REPO_URL} target="_blank" rel="noopener noreferrer">
                   <GitHubIcon />
                   <span className="label">Source</span>
