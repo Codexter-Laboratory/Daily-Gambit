@@ -1,4 +1,5 @@
-import { EmptyState, LoadingState, Panel } from '../../components';
+import { useState } from 'react';
+import { Panel } from '../../components';
 
 type Profile = {
   avatar?: string;
@@ -14,6 +15,7 @@ type Profile = {
   is_streamer?: boolean;
   twitch_url?: string;
   last_online: number;
+  url?: string;
 };
 
 type PlayerProfileSectionProps = {
@@ -22,83 +24,83 @@ type PlayerProfileSectionProps = {
   onlineStatus: { online: boolean } | null;
 };
 
+function Avatar({ profile }: { profile: Profile }) {
+  const [failed, setFailed] = useState(false);
+  if (!profile.avatar || failed) {
+    return (
+      <div className="avatar avatarFallback" aria-hidden="true">
+        {profile.username.charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+  return (
+    <img
+      className="avatar"
+      src={profile.avatar}
+      alt={`${profile.username} avatar`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function PlayerProfileSection({
   profileLoading,
   profile,
   onlineStatus,
 }: PlayerProfileSectionProps) {
-  if (profileLoading) {
-    return <LoadingState title="Player Profile" message="Loading profile…" />;
-  }
-
-  const typedProfile = profile as Profile | null;
-  if (!typedProfile) {
+  if (profileLoading || !profile) {
     return (
-      <EmptyState
-        title="Player Profile"
-        message='Enter a username and click "Load Player Stats" to load profile.'
-      />
+      <Panel>
+        <div className="profileCard">
+          <div className="avatar skeleton" />
+          <div style={{ flex: 1, display: 'grid', gap: 10 }}>
+            <div className="skeleton" style={{ height: 20, width: 200 }} />
+            <div className="skeleton" style={{ width: 320, maxWidth: '100%' }} />
+          </div>
+        </div>
+      </Panel>
     );
   }
 
-  const typedOnlineStatus = onlineStatus as { online: boolean } | null;
+  const profileUrl = profile.url ?? `https://www.chess.com/member/${profile.username}`;
 
   return (
-    <Panel title="Player Profile">
-      <div className="row" style={{ gap: 20, alignItems: 'flex-start' }}>
-        {typedProfile.avatar && (
-          <img
-            src={typedProfile.avatar}
-            alt={`${typedProfile.username} avatar`}
-            style={{ width: 80, height: 80, borderRadius: 8 }}
-          />
-        )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
-            {typedProfile.name ? typedProfile.name : typedProfile.username}
-            {typedProfile.title && (
-              <span style={{ marginLeft: 8, color: '#60a5fa' }}>{typedProfile.title}</span>
-            )}
+    <Panel>
+      <div className="profileCard">
+        <Avatar profile={profile} />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div className="profileName">
+            {profile.title ? <span className="titleBadge">{profile.title}</span> : null}
+            {profile.name || profile.username}
           </div>
-          <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-            <div>@{typedProfile.username} · ID: {typedProfile.player_id}</div>
-            {typedProfile.location && <div>📍 {typedProfile.location}</div>}
-            <div>📅 Joined: {new Date(typedProfile.joined * 1000).toLocaleDateString()}</div>
-            <div>👥 Followers: {typedProfile.followers.toLocaleString()}</div>
-            <div>📊 Status: {typedProfile.status}</div>
-            {typedProfile.fide && <div>🏆 FIDE Rating: {typedProfile.fide}</div>}
-            {typedProfile.is_streamer && typedProfile.twitch_url && (
-              <div>
-                🎮 Streamer:{' '}
-                <a
-                  href={typedProfile.twitch_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#60a5fa' }}
-                >
-                  {typedProfile.twitch_url}
-                </a>
-              </div>
-            )}
-            {typedOnlineStatus && (
-              <div style={{ marginTop: 8 }}>
+          <div className="profileMeta">
+            <span>@{profile.username}</span>
+            {onlineStatus ? (
+              <span>
                 <span
-                  style={{
-                    display: 'inline-block',
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: typedOnlineStatus.online ? '#34d399' : '#ef4444',
-                    marginRight: 8,
-                  }}
+                  className="statusDot"
+                  style={{ backgroundColor: onlineStatus.online ? 'var(--good)' : 'var(--faint)' }}
                 />
-                {typedOnlineStatus.online
+                {onlineStatus.online
                   ? 'Online now'
-                  : `Last seen: ${new Date(typedProfile.last_online * 1000).toLocaleDateString()}`}
-              </div>
-            )}
+                  : `Last seen ${new Date(profile.last_online * 1000).toLocaleDateString()}`}
+              </span>
+            ) : null}
+            {profile.location ? <span>📍 {profile.location}</span> : null}
+            <span>📅 Joined {new Date(profile.joined * 1000).toLocaleDateString()}</span>
+            <span>👥 {profile.followers.toLocaleString()} followers</span>
+            {profile.fide ? <span>🏆 FIDE {profile.fide}</span> : null}
+            <span style={{ textTransform: 'capitalize' }}>⭐ {profile.status.replace(/_/g, ' ')}</span>
+            {profile.is_streamer && profile.twitch_url ? (
+              <a href={profile.twitch_url} target="_blank" rel="noopener noreferrer">
+                🎮 Streamer
+              </a>
+            ) : null}
           </div>
         </div>
+        <a className="btn" href={profileUrl} target="_blank" rel="noopener noreferrer">
+          View on Chess.com ↗
+        </a>
       </div>
     </Panel>
   );

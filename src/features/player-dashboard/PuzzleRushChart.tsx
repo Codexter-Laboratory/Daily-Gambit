@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -16,7 +17,6 @@ type PuzzleRushChartProps = {
   puzzleRushSummary: PuzzleRushSummary | null;
   attemptsChart: AttemptsChartPoint[];
   data: DashboardResponse | null;
-  hasUsername: boolean;
 };
 
 const CHART_TOOLTIP_STYLE = {
@@ -35,89 +35,50 @@ function tooltipFormatter(value: unknown, name: string | undefined): [string, st
   return [displayValue, nameStr || 'Unknown'];
 }
 
-export function PuzzleRushChart({
-  puzzleRushSummary,
-  attemptsChart,
-  data,
-  hasUsername,
-}: PuzzleRushChartProps) {
+const METRICS: { key: keyof PuzzleRushSummary; label: string; color: string; suffix?: string }[] = [
+  { key: 'dailyAttempts', label: 'Daily attempts', color: 'var(--accent)' },
+  { key: 'dailyScore', label: 'Daily score', color: 'var(--good)' },
+  { key: 'bestScore', label: 'Best score', color: 'var(--warn)' },
+  { key: 'accuracy', label: 'Accuracy', color: 'var(--violet)', suffix: '%' },
+];
+
+const AXIS_TICK = { fill: 'rgba(255,255,255,0.6)', fontSize: 11 };
+
+export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data }: PuzzleRushChartProps) {
+  const days = data?.puzzleRush?.points?.length ?? 0;
+
   return (
-    <Panel title="Puzzle Rush Performance">
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 12,
-          marginBottom: 20,
-        }}
-      >
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#60a5fa' }}>
-            {puzzleRushSummary?.dailyAttempts ?? '-'}
-          </div>
-          <div className="muted" style={{ fontSize: 12 }}>Daily Attempts</div>
-        </div>
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#34d399' }}>
-            {puzzleRushSummary?.dailyScore ?? '-'}
-          </div>
-          <div className="muted" style={{ fontSize: 12 }}>Daily Score</div>
-        </div>
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#f59e0b' }}>
-            {puzzleRushSummary?.bestScore ?? '-'}
-          </div>
-          <div className="muted" style={{ fontSize: 12 }}>Best Score</div>
-        </div>
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#8b5cf6' }}>
-            {puzzleRushSummary?.accuracy != null ? `${puzzleRushSummary.accuracy}%` : '-'}
-          </div>
-          <div className="muted" style={{ fontSize: 12 }}>Accuracy</div>
-        </div>
+    <Panel title="Puzzle Rush">
+      <div className="metricTiles">
+        {METRICS.map((m) => {
+          const value = puzzleRushSummary?.[m.key];
+          return (
+            <div key={m.key} className="metricTile">
+              <div className="metricValue" style={{ color: m.color }}>
+                {value != null ? `${value}${m.suffix ?? ''}` : '–'}
+              </div>
+              <div className="metricLabel">{m.label}</div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="chartBox" style={{ height: 320, minHeight: 200, marginBottom: 16 }}>
+      <div className="chartBox" style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={attemptsChart}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" />
-            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+          <LineChart data={attemptsChart} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
+            <YAxis yAxisId="attempts" tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+            <YAxis yAxisId="score" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} />
             <Tooltip
               contentStyle={CHART_TOOLTIP_STYLE}
               formatter={(value: unknown, name: unknown) =>
                 tooltipFormatter(value, typeof name === 'string' ? name : undefined)
               }
             />
+            <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" />
             <Line
+              yAxisId="attempts"
               type="monotone"
               dataKey="attemptsDelta"
               stroke="#60a5fa"
@@ -127,6 +88,7 @@ export function PuzzleRushChart({
               name="Daily Attempts"
             />
             <Line
+              yAxisId="score"
               type="monotone"
               dataKey="scoreDelta"
               stroke="#34d399"
@@ -139,25 +101,13 @@ export function PuzzleRushChart({
         </ResponsiveContainer>
       </div>
 
-      {!hasUsername ? (
-        <div className="muted" style={{ fontSize: 12, minHeight: 20 }}>
-          Enter a Chess.com username, then click &ldquo;Load Player Stats&rdquo; to see puzzle rush performance.
-        </div>
-      ) : puzzleRushSummary ? (
-        <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          <div>📊 Live data from Chess.com · Updated: {puzzleRushSummary.lastUpdated}</div>
-          <div>
-            💡{' '}
-            {data?.puzzleRush?.points?.length
-              ? `Showing ${data.puzzleRush.points.length} days of historical data with current live stats`
-              : 'Showing current live performance. Historical data will appear over time.'}
-          </div>
-        </div>
-      ) : (
-        <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Click &ldquo;Load Player Stats&rdquo; to load puzzle rush data.
-        </div>
-      )}
+      <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+        {!puzzleRushSummary
+          ? 'Loading Puzzle Rush data…'
+          : days > 1
+            ? `${days} days of saved snapshots. A new one is saved each day you look this player up.`
+            : 'Only today is saved so far. The chart fills in as you look this player up on more days.'}
+      </div>
     </Panel>
   );
 }

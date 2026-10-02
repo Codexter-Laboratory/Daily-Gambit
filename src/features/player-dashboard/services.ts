@@ -81,15 +81,11 @@ function filterToMoveGames(currentGamesData: unknown, username: string): { games
 export async function fetchToMoveGames(username: string): Promise<{ games: unknown[] } | null> {
   const res = await fetch(`/api/current-games?username=${encodeURIComponent(username)}`);
   const json = await res.json();
-  console.log('Current games for to-move filtering:', json);
-
   if (!res.ok) throw new Error(json?.error || 'Failed to load current games.');
 
   const currentGamesData = json?.currentGames;
   if (!currentGamesData) return null;
-  const result = filterToMoveGames(currentGamesData, username);
-  console.log('Filtered to-move games:', result.games);
-  return result;
+  return filterToMoveGames(currentGamesData, username);
 }
 
 export async function fetchGames(
