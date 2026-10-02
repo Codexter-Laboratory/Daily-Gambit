@@ -106,7 +106,7 @@ export function PlayerDashboard() {
   }
 
   return (
-    <div className="stack">
+    <div className="stack dashboardPage">
       {search}
 
       <PlayerProfileSection

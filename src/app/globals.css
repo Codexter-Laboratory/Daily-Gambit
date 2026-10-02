@@ -683,3 +683,15 @@ select option {
   height: 84px;
   border-radius: 16px;
 }
+
+/* Player page: room under the sticky header and above the footer.
+   The landing page has none so the hero fits on one screen. */
+.dashboardPage {
+  padding: 24px 0 40px;
+}
+
+@media (max-width: 520px) {
+  .dashboardPage {
+    padding: 16px 0 32px;
+  }
+}
