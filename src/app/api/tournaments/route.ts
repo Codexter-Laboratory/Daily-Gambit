@@ -1,29 +1,15 @@
 import { NextResponse } from 'next/server';
 import { fetchPlayerTournaments } from '../../../lib/chesscom';
-
-function validateUsername(username: string) {
-  return /^[a-zA-Z0-9_]{1,64}$/.test(username);
-}
+import { badUsernameResponse, errorResponse, parseUsername } from '../../../lib/apiRoute';
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get('username')?.trim() ?? '';
-
-  if (!username || !validateUsername(username)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid username.' },
-      { status: 400 }
-    );
-  }
+  const username = parseUsername(req);
+  if (!username) return badUsernameResponse();
 
   try {
-    const controller = new AbortController();
-    const tournaments = await fetchPlayerTournaments(username, controller.signal);
+    const tournaments = await fetchPlayerTournaments(username);
     return NextResponse.json({ username, tournaments });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || 'Failed to fetch tournaments.' },
-      { status: 500 }
-    );
+  } catch (e) {
+    return errorResponse(e, 'Failed to fetch tournaments.');
   }
 }

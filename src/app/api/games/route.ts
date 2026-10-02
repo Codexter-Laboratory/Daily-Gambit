@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchRatingSeriesFromArchives, type GameTimeClass } from '../../../lib/chesscom';
-
-function validateUsername(username: string) {
-  return /^[a-zA-Z0-9_]{1,64}$/.test(username);
-}
+import { errorResponse, parseUsername } from '../../../lib/apiRoute';
 
 const allowed: GameTimeClass[] = [
   'bullet',
@@ -20,12 +17,12 @@ const allowed: GameTimeClass[] = [
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const username = searchParams.get('username')?.trim() ?? '';
+  const username = parseUsername(req);
   const timeClass = (searchParams.get('timeClass')?.trim() ?? 'blitz') as GameTimeClass;
   const monthsRaw = searchParams.get('months')?.trim();
   const months = monthsRaw ? Number(monthsRaw) : 6;
 
-  if (!username || !validateUsername(username)) {
+  if (!username) {
     return NextResponse.json({ error: 'Missing or invalid username.' }, { status: 400 });
   }
   if (!allowed.includes(timeClass)) {
@@ -44,8 +41,8 @@ export async function GET(req: Request) {
       signal: controller.signal,
     });
     return NextResponse.json({ username, timeClass, months, ...data });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Failed to fetch games.' }, { status: 500 });
+  } catch (e) {
+    return errorResponse(e, 'Failed to fetch games.');
   }
 }
 

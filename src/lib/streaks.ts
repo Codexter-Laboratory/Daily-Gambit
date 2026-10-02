@@ -51,20 +51,19 @@ function computeCurrentEndingAt(activeByDate: Map<DateISO, boolean>, end: DateIS
   }
 }
 
-export function computePuzzleRushActivityStreak(points: PuzzleRushPoint[]): StreakSummary {
+export function computePuzzleRushActivityStreak(
+  points: PuzzleRushPoint[],
+  today: DateISO = isoFromUTCDate(new Date())
+): StreakSummary {
   if (points.length === 0) return { current: 0, best: 0, endingDate: null };
 
-  // Active day definition:
-  // - Prefer attemptsDelta > 0 (computed from consecutive totals).
-  // - Fallback: if attemptsDelta is null but attemptsTotal is non-null and > 0, count as active.
+  // Active day definition: the attempts total went up since the previous snapshot.
+  // The very first snapshot has nothing to compare with (delta is null), so it is NOT counted.
+  // It used to count whenever the total was above zero, which gave every new player a free
+  // "1 day" streak even if they had not played at all.
   const activeByDate = new Map<DateISO, boolean>();
   for (const p of points) {
-    const active =
-      (typeof p.attemptsDelta === 'number' && p.attemptsDelta > 0) ||
-      (p.attemptsDelta === null &&
-        typeof p.attemptsTotal === 'number' &&
-        p.attemptsTotal > 0);
-    activeByDate.set(p.date, active);
+    activeByDate.set(p.date, typeof p.attemptsDelta === 'number' && p.attemptsDelta > 0);
   }
 
   const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
@@ -72,7 +71,12 @@ export function computePuzzleRushActivityStreak(points: PuzzleRushPoint[]): Stre
   const end = sorted[sorted.length - 1].date;
 
   const best = computeBestStreakFromActive(activeByDate, start, end);
-  const current = computeCurrentEndingAt(activeByDate, end);
+
+  // The current streak is measured against TODAY, not against the last saved snapshot.
+  // Counting back from the last snapshot made a streak that ended weeks ago still show as
+  // current. Today may simply not be saved yet, so a streak that ended yesterday is still alive.
+  const countFrom = activeByDate.get(today) === true ? today : addDaysUTC(today, -1);
+  const current = computeCurrentEndingAt(activeByDate, countFrom);
 
   return { current, best, endingDate: end };
 }

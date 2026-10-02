@@ -1,58 +1,76 @@
 import type { DashboardResponse, GamesTimeClass } from './types';
 
+/** An API call that returned an error status. Keeps the status so callers can tell 404 from 5xx. */
+export class ApiRequestError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
+/**
+ * GET a JSON endpoint. The body is read defensively: a gateway timeout or a crashed route can
+ * return HTML, and calling res.json() on that used to throw a confusing parse error.
+ * Throws ApiRequestError for any non-2xx response.
+ */
+async function getJson(url: string, fallbackMessage: string): Promise<any> {
+  const res = await fetch(url);
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    // not JSON: keep null
+  }
+  if (!res.ok) throw new ApiRequestError(res.status, json?.error || fallbackMessage);
+  return json;
+}
+
+
 export async function fetchDashboard(username: string): Promise<DashboardResponse | null> {
-  const res = await fetch(`/api/dashboard?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load dashboard.');
+  const json = await getJson(`/api/dashboard?username=${encodeURIComponent(username)}`, 'Failed to load dashboard.');
   return json ?? null;
 }
 
 export async function fetchStats(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/stats?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load stats.');
+  const json = await getJson(`/api/stats?username=${encodeURIComponent(username)}`, 'Failed to load stats.');
   return json?.stats ?? null;
 }
 
 export async function fetchProfile(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/profile?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) return null;
+  // Throws ApiRequestError on failure. Before, every failure returned null, so a network error
+  // or a Chess.com outage was reported as "username not found".
+  const json = await getJson(
+    `/api/profile?username=${encodeURIComponent(username)}`,
+    'Failed to load profile.'
+  );
   return json?.profile ?? null;
 }
 
 export async function fetchOnlineStatus(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/online-status?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load online status.');
+  const json = await getJson(`/api/online-status?username=${encodeURIComponent(username)}`, 'Failed to load online status.');
   return json?.onlineStatus ?? null;
 }
 
 export async function fetchClubs(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/clubs?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load clubs.');
+  const json = await getJson(`/api/clubs?username=${encodeURIComponent(username)}`, 'Failed to load clubs.');
   return json?.clubs ?? null;
 }
 
 export async function fetchTournaments(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/tournaments?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load tournaments.');
+  const json = await getJson(`/api/tournaments?username=${encodeURIComponent(username)}`, 'Failed to load tournaments.');
   return json?.tournaments ?? null;
 }
 
 export async function fetchMatches(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/matches?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load matches.');
+  const json = await getJson(`/api/matches?username=${encodeURIComponent(username)}`, 'Failed to load matches.');
   return json?.matches ?? null;
 }
 
 export async function fetchCurrentGames(username: string): Promise<unknown | null> {
-  const res = await fetch(`/api/current-games?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load current games.');
+  const json = await getJson(`/api/current-games?username=${encodeURIComponent(username)}`, 'Failed to load current games.');
   return json?.currentGames ?? null;
 }
 
@@ -85,14 +103,14 @@ export async function fetchGames(
 ): Promise<{
   points: { date: string; rating: number; result: 'win' | 'loss' | 'draw' | 'other' }[];
   summary: { games: number; win: number; loss: number; draw: number };
+  missingMonths: number;
 } | null> {
-  const res = await fetch(
+  const json = await getJson(
     `/api/games?username=${encodeURIComponent(username)}&timeClass=${encodeURIComponent(
       timeClass
-    )}&months=${encodeURIComponent(String(months))}`
+    )}&months=${encodeURIComponent(String(months))}`,
+    'Failed to load games.'
   );
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load games.');
 
   return {
     points: Array.isArray(json?.points)
@@ -103,6 +121,7 @@ export async function fetchGames(
         }))
       : [],
     summary: json?.summary ?? { games: 0, win: 0, loss: 0, draw: 0 },
+    missingMonths: Number(json?.missingMonths ?? 0),
   };
 }
 
