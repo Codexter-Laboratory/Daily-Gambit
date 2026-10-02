@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import './globals.css';
 
 const REPO_URL = 'https://github.com/Codexter-Laboratory/Daily-Gambit';
@@ -30,10 +31,10 @@ export default function RootLayout({
         <div className="appShell">
           <header className="appHeader">
             <div className="appHeaderInner">
-              <a className="brand" href="/">
+              <Link className="brand" href="/">
                 <span className="brandMark" aria-hidden="true">♟</span>
                 Daily Gambit
-              </a>
+              </Link>
               <nav className="headerNav" aria-label="Main">
                 <a
                   className="headerLink"

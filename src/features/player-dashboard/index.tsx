@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMounted } from '../../hooks/useMounted';
 import { Panel } from '../../components';
 import { usePlayerDashboard } from './hooks';
@@ -50,28 +51,35 @@ export function PlayerDashboard() {
     loadDashboard,
     loadGames,
     refreshAll,
+    clearPlayer,
   } = usePlayerDashboard();
 
-  // Load the player named in ?u= once, so a dashboard link can be shared.
-  const initialLoadDone = useRef(false);
-  useEffect(() => {
-    if (!mounted || initialLoadDone.current) return;
-    initialLoadDone.current = true;
-    const fromUrl = new URLSearchParams(window.location.search).get('u')?.trim();
-    if (fromUrl) {
-      setUsername(fromUrl);
-      refreshAll(fromUrl, { withIngest: true });
-    }
-  }, [mounted, refreshAll, setUsername]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlUsername = searchParams.get('u')?.replace(/\s+/g, '').toLowerCase() || null;
 
-  // Keep ?u= in sync with the loaded player.
+  // The ?u= param is the source of truth for which player is shown, so links can be
+  // shared and Back/Forward move between players (or back to the landing page).
+  const refreshAllRef = useRef(refreshAll);
+  refreshAllRef.current = refreshAll;
   useEffect(() => {
-    if (!mounted) return;
-    const url = new URL(window.location.href);
-    if (activeUsername) url.searchParams.set('u', activeUsername);
-    else url.searchParams.delete('u');
-    window.history.replaceState(null, '', url);
-  }, [mounted, activeUsername]);
+    if (urlUsername) {
+      setUsername(urlUsername);
+      refreshAllRef.current(urlUsername, { withIngest: true });
+    } else {
+      clearPlayer();
+    }
+  }, [urlUsername, setUsername, clearPlayer]);
+
+  const showPlayer = (name: string) => {
+    const clean = name.replace(/\s+/g, '').toLowerCase();
+    if (!clean) return;
+    if (clean === urlUsername) {
+      refreshAll(clean, { withIngest: true });
+    } else {
+      router.push(`/?u=${encodeURIComponent(clean)}`, { scroll: false });
+    }
+  };
 
   if (!mounted) {
     return <Panel>Loading…</Panel>;
@@ -85,7 +93,7 @@ export function PlayerDashboard() {
     <UsernameSearch
       username={username}
       onUsernameChange={setUsername}
-      onSearch={(name) => refreshAll(name, { withIngest: true })}
+      onSearch={showPlayer}
       onRefreshCached={() => activeUsername && loadDashboard(activeUsername)}
       isLoading={isLoading}
       activeUsername={activeUsername}

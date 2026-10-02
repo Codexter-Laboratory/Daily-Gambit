@@ -225,6 +225,12 @@ export function usePlayerDashboard() {
     ]
   );
 
+  const clearPlayer = useCallback(() => {
+    setActiveUsername(null);
+    setUsername('');
+    setError(null);
+  }, []);
+
   const statsSummary = useMemo(() => computeStatsSummary(stats), [stats]);
   const attemptsChart = useMemo(
     () => computeAttemptsChart(data, stats, statsSummary),
@@ -282,5 +288,6 @@ export function usePlayerDashboard() {
     loadDashboard,
     loadGames,
     refreshAll,
+    clearPlayer,
   };
 }
