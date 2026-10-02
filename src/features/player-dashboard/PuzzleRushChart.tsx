@@ -17,6 +17,7 @@ type PuzzleRushChartProps = {
   puzzleRushSummary: PuzzleRushSummary | null;
   attemptsChart: AttemptsChartPoint[];
   data: DashboardResponse | null;
+  loading: boolean;
 };
 
 const CHART_TOOLTIP_STYLE = {
@@ -44,11 +45,41 @@ const METRICS: { key: keyof PuzzleRushSummary; label: string; color: string; suf
 
 const AXIS_TICK = { fill: 'rgba(255,255,255,0.6)', fontSize: 11 };
 
-export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data }: PuzzleRushChartProps) {
+export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loading }: PuzzleRushChartProps) {
   const days = data?.puzzleRush?.points?.length ?? 0;
 
+  if (!puzzleRushSummary && loading) {
+    return (
+      <Panel title="Puzzle Rush">
+        <span className="srOnly" role="status">Loading Puzzle Rush data…</span>
+        <div className="metricTiles">
+          {METRICS.map((m) => (
+            <div key={m.key} className="skeleton" style={{ height: 62, borderRadius: 10 }} />
+          ))}
+        </div>
+        <div className="skeleton chartSkeleton" />
+      </Panel>
+    );
+  }
+
+  const hasPuzzleRush =
+    puzzleRushSummary != null &&
+    (puzzleRushSummary.dailyAttempts != null || puzzleRushSummary.bestScore != null || days > 0);
+
+  if (!hasPuzzleRush) {
+    return (
+      <Panel title="Puzzle Rush" busy={loading}>
+        <div className="chartEmpty">
+          {puzzleRushSummary
+            ? "This player hasn't played Puzzle Rush yet, so there's nothing to chart."
+            : "Puzzle Rush stats couldn't be loaded. Try refreshing."}
+        </div>
+      </Panel>
+    );
+  }
+
   return (
-    <Panel title="Puzzle Rush">
+    <Panel title="Puzzle Rush" busy={loading}>
       <div className="metricTiles">
         {METRICS.map((m) => {
           const value = puzzleRushSummary?.[m.key];
@@ -102,9 +133,7 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data }: Puzz
       </div>
 
       <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-        {!puzzleRushSummary
-          ? 'Loading Puzzle Rush data…'
-          : days > 1
+        {days > 1
             ? `${days} days of saved snapshots. A new one is saved each day you look this player up.`
             : 'Only today is saved so far. The chart fills in as you look this player up on more days.'}
       </div>

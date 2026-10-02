@@ -24,7 +24,10 @@ export function PlayerDashboard() {
     activeUsername,
     error,
     data,
+    dashboardLoading,
     statsLoading,
+    gamesLoading,
+    isRefreshing,
     profile,
     profileLoading,
     onlineStatus,
@@ -47,8 +50,6 @@ export function PlayerDashboard() {
     attemptsChart,
     puzzleRushSummary,
     ratingChart,
-    isLoading,
-    loadDashboard,
     loadGames,
     refreshAll,
     clearPlayer,
@@ -94,8 +95,7 @@ export function PlayerDashboard() {
       username={username}
       onUsernameChange={setUsername}
       onSearch={showPlayer}
-      onRefreshCached={() => activeUsername && loadDashboard(activeUsername)}
-      isLoading={isLoading}
+      isLoading={isRefreshing}
       activeUsername={activeUsername}
       error={error}
     />
@@ -117,6 +117,7 @@ export function PlayerDashboard() {
 
       <StatCardsSection
         data={data}
+        dashboardLoading={dashboardLoading}
         statsLoading={statsLoading}
         statsSummary={statsSummary}
       />
@@ -129,6 +130,7 @@ export function PlayerDashboard() {
           setMonths={setMonths}
           ratingChart={ratingChart}
           gamesSummary={games?.summary ?? null}
+          loading={gamesLoading}
           onCategoryChange={handleGamesFilterChange}
           onLookbackChange={handleGamesFilterChange}
         />
@@ -137,6 +139,7 @@ export function PlayerDashboard() {
           puzzleRushSummary={puzzleRushSummary}
           attemptsChart={attemptsChart}
           data={data}
+          loading={statsLoading || dashboardLoading}
         />
       </div>
 
@@ -173,7 +176,7 @@ export function PlayerDashboard() {
         />
       </div>
 
-      <SnapshotsTable points={data?.puzzleRush?.points ?? []} />
+      <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
     </div>
   );
 }

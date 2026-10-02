@@ -13,7 +13,7 @@ export function ToMoveGamesSection({
   toMoveGames,
   hasUsername,
 }: ToMoveGamesSectionProps) {
-  if (toMoveGamesLoading) {
+  if (toMoveGamesLoading && !toMoveGames) {
     return (
       <LoadingState
         title="Games Requiring Your Move"
@@ -27,6 +27,7 @@ export function ToMoveGamesSection({
     return (
       <EmptyState
         title="Games Requiring Your Move"
+        busy={toMoveGamesLoading}
         message={
           hasUsername
             ? 'Great! No games need your immediate attention. 🎉'
@@ -37,7 +38,7 @@ export function ToMoveGamesSection({
   }
 
   return (
-    <Panel title={`Games Requiring Your Move (${typedToMove.games.length})`}>
+    <Panel title={`Games Requiring Your Move (${typedToMove.games.length})`} busy={toMoveGamesLoading}>
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
         These games need your immediate attention
       </div>

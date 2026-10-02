@@ -1,17 +1,18 @@
 import { ReactNode } from 'react';
+import { Panel } from './Panel';
 
 type EmptyStateProps = {
   title: string;
   message: ReactNode;
+  busy?: boolean;
 };
 
-export function EmptyState({ title, message }: EmptyStateProps) {
+export function EmptyState({ title, message, busy }: EmptyStateProps) {
   return (
-    <div className="panel">
-      <div className="panelTitle">{title}</div>
+    <Panel title={title} busy={busy}>
       <div className="muted" style={{ fontSize: 13 }}>
         {message}
       </div>
-    </div>
+    </Panel>
   );
 }

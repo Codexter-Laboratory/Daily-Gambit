@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { DashboardResponse, GamesTimeClass } from './types';
 import * as services from './services';
 import {
@@ -12,7 +12,7 @@ import { toFriendlyErrorMessage } from '../../utils/errorMessage';
 export function usePlayerDashboard() {
   const [username, setUsername] = useState('');
   const [activeUsername, setActiveUsername] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [stats, setStats] = useState<unknown | null>(null);
@@ -22,11 +22,11 @@ export function usePlayerDashboard() {
   const [tournaments, setTournaments] = useState<unknown | null>(null);
   const [matches, setMatches] = useState<unknown | null>(null);
   const [currentGames, setCurrentGames] = useState<unknown | null>(null);
-  const [toMoveGames, setToMoveGames] = useState<{ games: unknown[] } | null>(null);
   const [timeClass, setTimeClass] = useState<GamesTimeClass>('blitz');
   const [months, setMonths] = useState(6);
   const [games, setGames] = useState<Awaited<ReturnType<typeof services.fetchGames>> | null>(null);
 
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [onlineStatusLoading, setOnlineStatusLoading] = useState(false);
@@ -34,202 +34,154 @@ export function usePlayerDashboard() {
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [currentGamesLoading, setCurrentGamesLoading] = useState(false);
-  const [toMoveGamesLoading, setToMoveGamesLoading] = useState(false);
   const [gamesLoading, setGamesLoading] = useState(false);
 
-  const loadDashboard = useCallback(async (nextUsername = username) => {
-    setLoading(true);
-    try {
-      const json = await services.fetchDashboard(nextUsername);
-      setData(json ?? null);
-      return json;
-    } catch {
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [username]);
+  // Each refreshAll() bumps the generation; results from an older generation are
+  // dropped, so a slow response for a previous player never overwrites the current one.
+  const generation = useRef(0);
+  const gamesRequest = useRef(0);
+  const activeUsernameRef = useRef<string | null>(null);
 
-  const loadStats = useCallback(async (nextUsername = username) => {
-    setStatsLoading(true);
-    try {
-      const result = await services.fetchStats(nextUsername);
-      setStats(result ?? null);
-      return result;
-    } catch {
-      setStats(null);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [username]);
-
-  const loadProfile = useCallback(async (nextUsername = username) => {
-    setProfileLoading(true);
-    try {
-      const result = await services.fetchProfile(nextUsername);
-      setProfile(result ?? null);
-      return result;
-    } catch {
-      setProfile(null);
-      return null;
-    } finally {
-      setProfileLoading(false);
-    }
-  }, [username]);
-
-  const loadOnlineStatus = useCallback(async (nextUsername = username) => {
-    setOnlineStatusLoading(true);
-    try {
-      const result = await services.fetchOnlineStatus(nextUsername);
-      setOnlineStatus(result ?? null);
-    } catch {
-      setOnlineStatus(null);
-    } finally {
-      setOnlineStatusLoading(false);
-    }
-  }, [username]);
-
-  const loadClubs = useCallback(async (nextUsername = username) => {
-    setClubsLoading(true);
-    try {
-      const result = await services.fetchClubs(nextUsername);
-      setClubs(result ?? null);
-    } catch {
-      setClubs(null);
-    } finally {
-      setClubsLoading(false);
-    }
-  }, [username]);
-
-  const loadTournaments = useCallback(async (nextUsername = username) => {
-    setTournamentsLoading(true);
-    try {
-      const result = await services.fetchTournaments(nextUsername);
-      setTournaments(result ?? null);
-    } catch {
-      setTournaments(null);
-    } finally {
-      setTournamentsLoading(false);
-    }
-  }, [username]);
-
-  const loadMatches = useCallback(async (nextUsername = username) => {
-    setMatchesLoading(true);
-    try {
-      const result = await services.fetchMatches(nextUsername);
-      setMatches(result ?? null);
-    } catch {
-      setMatches(null);
-    } finally {
-      setMatchesLoading(false);
-    }
-  }, [username]);
-
-  const loadCurrentGames = useCallback(async (nextUsername = username) => {
-    setCurrentGamesLoading(true);
-    try {
-      const result = await services.fetchCurrentGames(nextUsername);
-      setCurrentGames(result ?? null);
-    } catch {
-      setCurrentGames(null);
-    } finally {
-      setCurrentGamesLoading(false);
-    }
-  }, [username]);
-
-  const loadToMoveGames = useCallback(async (nextUsername = username) => {
-    setToMoveGamesLoading(true);
-    try {
-      const result = await services.fetchToMoveGames(nextUsername);
-      setToMoveGames(result ?? null);
-    } catch (e) {
-      console.error('To-move games error:', e);
-      setToMoveGames(null);
-    } finally {
-      setToMoveGamesLoading(false);
-    }
-  }, [username]);
-
-  const loadGames = useCallback(
-    async (nextUsername = username, nextTimeClass = timeClass, nextMonths = months) => {
-      setGamesLoading(true);
-      setError(null);
+  const runLoader = useCallback(
+    async <T>(
+      setLoading: (v: boolean) => void,
+      setValue: (v: T | null) => void,
+      fetcher: () => Promise<T | null>
+    ): Promise<T | null> => {
+      const gen = generation.current;
+      setLoading(true);
       try {
-        const result = await services.fetchGames(nextUsername, nextTimeClass, nextMonths);
-        setGames(result ?? null);
-      } catch (e) {
-        setError(toFriendlyErrorMessage(e, 'Failed to load games.'));
-        setGames(null);
+        const result = (await fetcher()) ?? null;
+        if (gen === generation.current) setValue(result);
+        return result;
+      } catch {
+        if (gen === generation.current) setValue(null);
+        return null;
       } finally {
-        setGamesLoading(false);
+        if (gen === generation.current) setLoading(false);
       }
     },
-    [username, timeClass, months]
+    []
   );
 
+  const loadDashboard = useCallback(
+    (nextUsername: string) => runLoader(setDashboardLoading, setData, () => services.fetchDashboard(nextUsername)),
+    [runLoader]
+  );
+
+  const loadGames = useCallback(
+    async (nextUsername: string, nextTimeClass: GamesTimeClass, nextMonths: number) => {
+      const request = ++gamesRequest.current;
+      setGamesLoading(true);
+      try {
+        const result = await services.fetchGames(nextUsername, nextTimeClass, nextMonths);
+        if (request === gamesRequest.current) setGames(result ?? null);
+      } catch (e) {
+        if (request === gamesRequest.current) {
+          setError(toFriendlyErrorMessage(e, 'Failed to load games.'));
+          setGames(null);
+        }
+      } finally {
+        if (request === gamesRequest.current) setGamesLoading(false);
+      }
+    },
+    []
+  );
+
+  const setAllLoading = useCallback((value: boolean) => {
+    setDashboardLoading(value);
+    setStatsLoading(value);
+    setProfileLoading(value);
+    setOnlineStatusLoading(value);
+    setClubsLoading(value);
+    setTournamentsLoading(value);
+    setMatchesLoading(value);
+    setCurrentGamesLoading(value);
+    setGamesLoading(value);
+  }, []);
+
+  const clearData = useCallback(() => {
+    setData(null);
+    setStats(null);
+    setProfile(null);
+    setOnlineStatus(null);
+    setClubs(null);
+    setTournaments(null);
+    setMatches(null);
+    setCurrentGames(null);
+    setGames(null);
+  }, []);
+
   const refreshAll = useCallback(
-    async (nextUsername = username, options?: { withIngest?: boolean }) => {
+    async (nextUsername: string, options?: { withIngest?: boolean }) => {
       const clean = nextUsername.replace(/\s+/g, '').trim().toLowerCase();
       if (!clean) return;
 
+      const gen = ++generation.current;
+      gamesRequest.current++;
+      const isNewPlayer = clean !== activeUsernameRef.current;
+      activeUsernameRef.current = clean;
+
       setError(null);
       setActiveUsername(clean);
+      setIsRefreshing(true);
+      // A different player starts from skeletons; the same player keeps its data
+      // on screen while it refreshes.
+      if (isNewPlayer) clearData();
+      setAllLoading(true);
 
-      if (options?.withIngest) {
-        try {
-          await services.fetchIngest(clean);
-        } catch {
-          // Continue loading read endpoints even if ingest fails.
-        }
+      // Saving today's snapshot runs alongside the profile check; only the
+      // snapshot-based dashboard has to wait for it.
+      const ingest = options?.withIngest
+        ? services.fetchIngest(clean).catch(() => {
+            // Continue loading read endpoints even if ingest fails.
+          })
+        : Promise.resolve();
+
+      const profileResult = await runLoader(setProfileLoading, setProfile, () => services.fetchProfile(clean));
+      if (gen !== generation.current) return;
+
+      if (!profileResult) {
+        setAllLoading(false);
+        setIsRefreshing(false);
+        activeUsernameRef.current = null;
+        setActiveUsername(null);
+        setError("Couldn't find that Chess.com username. Please check the spelling and try again.");
+        return;
       }
 
-      try {
-        const profileResult = await loadProfile(clean);
+      await Promise.allSettled([
+        ingest.then(() => loadDashboard(clean)),
+        runLoader(setStatsLoading, setStats, () => services.fetchStats(clean)),
+        runLoader(setOnlineStatusLoading, setOnlineStatus, () => services.fetchOnlineStatus(clean)),
+        runLoader(setClubsLoading, setClubs, () => services.fetchClubs(clean)),
+        runLoader(setTournamentsLoading, setTournaments, () => services.fetchTournaments(clean)),
+        runLoader(setMatchesLoading, setMatches, () => services.fetchMatches(clean)),
+        runLoader(setCurrentGamesLoading, setCurrentGames, () => services.fetchCurrentGames(clean)),
+        loadGames(clean, timeClass, months),
+      ]);
 
-        if (!profileResult) {
-          setActiveUsername(null);
-          setError("Couldn't find that Chess.com username. Please check the spelling and try again.");
-          return;
-        }
-
-        await Promise.allSettled([
-          loadDashboard(clean),
-          loadStats(clean),
-          loadGames(clean, timeClass, months),
-          loadOnlineStatus(clean),
-          loadClubs(clean),
-          loadTournaments(clean),
-          loadMatches(clean),
-          loadCurrentGames(clean),
-          loadToMoveGames(clean),
-        ]);
-      } catch (e) {
-        console.error('Data loading error:', e);
-        setError('Failed to load data. Please try again.');
-      }
+      if (gen === generation.current) setIsRefreshing(false);
     },
-    [
-      username,
-      timeClass,
-      months,
-      loadProfile,
-      loadDashboard,
-      loadStats,
-      loadGames,
-      loadOnlineStatus,
-      loadClubs,
-      loadTournaments,
-      loadMatches,
-      loadCurrentGames,
-      loadToMoveGames,
-    ]
+    [timeClass, months, runLoader, loadDashboard, loadGames, clearData, setAllLoading]
   );
 
   const clearPlayer = useCallback(() => {
+    generation.current++;
+    gamesRequest.current++;
+    activeUsernameRef.current = null;
     setActiveUsername(null);
     setUsername('');
     setError(null);
-  }, []);
+    setIsRefreshing(false);
+    setAllLoading(false);
+    clearData();
+  }, [clearData, setAllLoading]);
+
+  const toMoveGames = useMemo(
+    () => (currentGames && activeUsername ? services.filterToMoveGames(currentGames, activeUsername) : null),
+    [currentGames, activeUsername]
+  );
 
   const statsSummary = useMemo(() => computeStatsSummary(stats), [stats]);
   const attemptsChart = useMemo(
@@ -239,31 +191,20 @@ export function usePlayerDashboard() {
   const puzzleRushSummary = useMemo(() => computePuzzleRushSummary(statsSummary), [statsSummary]);
   const ratingChart = useMemo(() => computeRatingChart(games), [games]);
 
-  const isLoading =
-    loading ||
-    statsLoading ||
-    gamesLoading ||
-    profileLoading ||
-    onlineStatusLoading ||
-    clubsLoading ||
-    tournamentsLoading ||
-    matchesLoading ||
-    currentGamesLoading ||
-    toMoveGamesLoading;
-
-  const hasUsername = username.trim().length > 0;
-
   return {
     username,
     setUsername,
     activeUsername,
+    isRefreshing,
     error,
     data,
+    dashboardLoading,
     statsLoading,
     stats,
     profileLoading,
     profile,
     onlineStatus,
+    onlineStatusLoading,
     clubsLoading,
     clubs,
     tournamentsLoading,
@@ -272,20 +213,18 @@ export function usePlayerDashboard() {
     matches,
     currentGamesLoading,
     currentGames,
-    toMoveGamesLoading,
+    toMoveGamesLoading: currentGamesLoading,
     toMoveGames,
     timeClass,
     setTimeClass,
     months,
     setMonths,
     games,
+    gamesLoading,
     statsSummary,
     attemptsChart,
     puzzleRushSummary,
     ratingChart,
-    isLoading,
-    hasUsername,
-    loadDashboard,
     loadGames,
     refreshAll,
     clearPlayer,

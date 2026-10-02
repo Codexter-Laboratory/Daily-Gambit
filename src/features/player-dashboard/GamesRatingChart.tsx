@@ -18,6 +18,7 @@ type GamesRatingChartProps = {
   setMonths: (v: number) => void;
   ratingChart: RatingChartPoint[];
   gamesSummary: { games: number; win: number; loss: number; draw: number } | null;
+  loading: boolean;
   onCategoryChange: (timeClass: GamesTimeClass, months: number) => void;
   onLookbackChange: (timeClass: GamesTimeClass, months: number) => void;
 };
@@ -50,11 +51,12 @@ export function GamesRatingChart({
   setMonths,
   ratingChart,
   gamesSummary,
+  loading,
   onCategoryChange,
   onLookbackChange,
 }: GamesRatingChartProps) {
   return (
-    <Panel title="Rating history">
+    <Panel title="Rating history" busy={loading && gamesSummary !== null}>
       <div className="row" style={{ marginBottom: 10 }}>
         <label className="muted" style={{ fontSize: 12 }}>Category</label>
         <select
@@ -88,6 +90,20 @@ export function GamesRatingChart({
         </select>
       </div>
 
+      {!gamesSummary && loading ? (
+        <>
+          <span className="srOnly" role="status">Loading rating history…</span>
+          <div className="metricTiles">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton" style={{ height: 62, borderRadius: 10 }} />
+            ))}
+          </div>
+          <div className="skeleton chartSkeleton" />
+        </>
+      ) : !gamesSummary ? (
+        <div className="chartEmpty">Rating history couldn&apos;t be loaded. Try refreshing.</div>
+      ) : (
+        <>
       <div className="metricTiles">
         <div className="metricTile">
           <div className="metricValue">{gamesSummary?.games ?? '–'}</div>
@@ -107,6 +123,12 @@ export function GamesRatingChart({
         </div>
       </div>
 
+
+          {gamesSummary.games === 0 ? (
+            <div className="chartEmpty">
+              No {TIME_CLASS_OPTIONS.find(([id]) => id === timeClass)?.[1] ?? timeClass} games in the last {months} months. Try another category or a longer lookback.
+            </div>
+          ) : (
       <div className="chartBox" style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={ratingChart} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
@@ -135,6 +157,10 @@ export function GamesRatingChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+          )}
+        </>
+      )}
 
       <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
         Rating after each game in the last {months} months, from Chess.com game archives.

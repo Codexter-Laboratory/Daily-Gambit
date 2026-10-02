@@ -4,23 +4,28 @@ import type { StatsSummary } from './derived';
 
 type StatCardsSectionProps = {
   data: DashboardResponse | null;
+  dashboardLoading: boolean;
   statsLoading: boolean;
   statsSummary: StatsSummary | null;
 };
 
-export function StatCardsSection({ data, statsLoading, statsSummary }: StatCardsSectionProps) {
+function SkeletonCard({ label }: { label: string }) {
+  return (
+    <StatCard label={label}>
+      <div className="skeleton" style={{ height: 26, width: '60%', margin: '4px 0 8px' }} />
+      <div className="skeleton" style={{ width: '80%' }} />
+    </StatCard>
+  );
+}
+
+export function StatCardsSection({ data, dashboardLoading, statsLoading, statsSummary }: StatCardsSectionProps) {
   const streak = data?.puzzleRush.streak;
+  const busy = (statsLoading && statsSummary !== null) || (dashboardLoading && data !== null);
 
   return (
-    <div className="statCards">
-      {statsLoading && !statsSummary
-        ? ['Bullet', 'Blitz', 'Rapid', 'Daily'].map((label) => (
-            <StatCard key={label} label={label}>
-              <div className="skeleton" style={{ height: 26, width: '60%', margin: '4px 0 8px' }} />
-              <div className="skeleton" style={{ width: '80%' }} />
-            </StatCard>
-          ))
-        : statsSummary?.chess.map((c) => (
+    <div className={busy ? 'statCards statCardsBusy' : 'statCards'} aria-busy={statsLoading || dashboardLoading}>
+      {statsSummary
+        ? statsSummary.chess.map((c) => (
             <StatCard key={c.label} label={`${c.label} rating`} value={c.rating ?? '–'}>
               {c.games != null ? (
                 <>
@@ -33,12 +38,21 @@ export function StatCardsSection({ data, statsLoading, statsSummary }: StatCards
                 'No rated games'
               )}
             </StatCard>
-          ))}
+          ))
+        : statsLoading
+          ? ['Bullet', 'Blitz', 'Rapid', 'Daily'].map((label) => <SkeletonCard key={label} label={`${label} rating`} />)
+          : (
+            <StatCard label="Ratings">Ratings couldn&apos;t be loaded. Try refreshing.</StatCard>
+          )}
 
-      <StatCard label="🔥 Puzzle Rush streak" value={`${streak?.current ?? 0}d`}>
-        Best: {streak?.best ?? 0} days
-        {streak?.endingDate ? <> · Last: {streak.endingDate}</> : null}
-      </StatCard>
+      {!data && dashboardLoading ? (
+        <SkeletonCard label="🔥 Puzzle Rush streak" />
+      ) : (
+        <StatCard label="🔥 Puzzle Rush streak" value={`${streak?.current ?? 0}d`}>
+          Best: {streak?.best ?? 0} days
+          {streak?.endingDate ? <> · Last: {streak.endingDate}</> : null}
+        </StatCard>
+      )}
     </div>
   );
 }

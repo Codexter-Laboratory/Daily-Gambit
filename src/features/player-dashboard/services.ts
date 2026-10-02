@@ -56,7 +56,7 @@ export async function fetchCurrentGames(username: string): Promise<unknown | nul
   return json?.currentGames ?? null;
 }
 
-function filterToMoveGames(currentGamesData: unknown, username: string): { games: unknown[] } {
+export function filterToMoveGames(currentGamesData: unknown, username: string): { games: unknown[] } {
   const data = currentGamesData as { games?: unknown[] } | null;
   if (!data?.games) return { games: [] };
 
@@ -76,16 +76,6 @@ function filterToMoveGames(currentGamesData: unknown, username: string): { games
   });
 
   return { games: myTurnGames };
-}
-
-export async function fetchToMoveGames(username: string): Promise<{ games: unknown[] } | null> {
-  const res = await fetch(`/api/current-games?username=${encodeURIComponent(username)}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load current games.');
-
-  const currentGamesData = json?.currentGames;
-  if (!currentGamesData) return null;
-  return filterToMoveGames(currentGamesData, username);
 }
 
 export async function fetchGames(
