@@ -21,7 +21,7 @@ export function CurrentGamesTable({
   username,
   hasUsername,
 }: CurrentGamesTableProps) {
-  if (currentGamesLoading) {
+  if (currentGamesLoading && !currentGames) {
     return <LoadingState title="Current Games" message="Loading current games…" />;
   }
 
@@ -30,6 +30,7 @@ export function CurrentGamesTable({
     return (
       <EmptyState
         title="Current Games"
+        busy={currentGamesLoading}
         message={
           hasUsername
             ? 'No active games right now.'
@@ -42,7 +43,7 @@ export function CurrentGamesTable({
   const currentUsername = username.trim();
 
   return (
-    <Panel title={`Current Games (${typedGames.games.length})`}>
+    <Panel title={`Current Games (${typedGames.games.length})`} busy={currentGamesLoading}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>

@@ -131,7 +131,6 @@ a:hover {
 
 .appMain {
   flex: 1;
-  padding: 24px 20px 40px;
   width: min(1100px, 100%);
   margin: 0 auto;
 }
@@ -145,7 +144,7 @@ a:hover {
 .appFooterInner {
   width: min(1100px, 100%);
   margin: 0 auto;
-  padding: 18px 20px;
+  padding: 18px 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -610,4 +609,77 @@ select option {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---------- Refreshing panels ---------- */
+
+.panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.panelBody {
+  transition: opacity 0.2s;
+}
+
+.panelBusy .panelBody {
+  opacity: 0.55;
+}
+
+.panelBusy::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: panelProgress 1.1s ease-in-out infinite;
+}
+
+@keyframes panelProgress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.chartSkeleton {
+  height: 260px;
+  border-radius: 10px;
+}
+
+.chartEmpty {
+  display: grid;
+  place-items: center;
+  height: 260px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .spinner,
+  .panelBusy::before {
+    animation-duration: 3s;
+  }
+}
+
+.statCards .statCard {
+  transition: opacity 0.2s;
+}
+
+.statCardsBusy .statCard {
+  opacity: 0.55;
+}
+
+.avatar.skeleton {
+  height: 84px;
+  border-radius: 16px;
 }

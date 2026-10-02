@@ -48,7 +48,7 @@ export function PlayerProfileSection({
   profile,
   onlineStatus,
 }: PlayerProfileSectionProps) {
-  if (profileLoading || !profile) {
+  if (!profile) {
     return (
       <Panel>
         <div className="profileCard">
@@ -65,7 +65,7 @@ export function PlayerProfileSection({
   const profileUrl = profile.url ?? `https://www.chess.com/member/${profile.username}`;
 
   return (
-    <Panel>
+    <Panel busy={profileLoading}>
       <div className="profileCard">
         <Avatar profile={profile} />
         <div style={{ flex: 1, minWidth: 200 }}>

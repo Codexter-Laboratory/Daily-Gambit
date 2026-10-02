@@ -23,7 +23,7 @@ export function TeamMatchesSection({
   matches,
   hasUsername,
 }: TeamMatchesSectionProps) {
-  if (matchesLoading) {
+  if (matchesLoading && !matches) {
     return <LoadingState title="Team Matches" message="Loading matches…" />;
   }
 
@@ -32,6 +32,7 @@ export function TeamMatchesSection({
     return (
       <EmptyState
         title="Team Matches"
+        busy={matchesLoading}
         message={
           hasUsername
             ? 'No team matches.'
@@ -47,7 +48,7 @@ export function TeamMatchesSection({
     (typedMatches.registered?.length ?? 0) > 0;
 
   return (
-    <Panel title="Team Matches">
+    <Panel title="Team Matches" busy={matchesLoading}>
       {typedMatches.finished && typedMatches.finished.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div

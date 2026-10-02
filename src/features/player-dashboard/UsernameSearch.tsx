@@ -6,7 +6,6 @@ type UsernameSearchProps = {
   username: string;
   onUsernameChange: (value: string) => void;
   onSearch: (username: string) => void;
-  onRefreshCached: () => void;
   isLoading: boolean;
   activeUsername: string | null;
   error: string | null;
@@ -16,12 +15,14 @@ export function UsernameSearch({
   username,
   onUsernameChange,
   onSearch,
-  onRefreshCached,
   isLoading,
   activeUsername,
   error,
 }: UsernameSearchProps) {
-  const hasUsername = username.trim().length > 0;
+  const cleanUsername = username.replace(/\s+/g, '').toLowerCase();
+  const hasUsername = cleanUsername.length > 0;
+  // Typing the player that's already on screen turns the button into a refresh.
+  const isRefresh = activeUsername !== null && cleanUsername === activeUsername;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -46,9 +47,15 @@ export function UsernameSearch({
           autoComplete="off"
           spellCheck={false}
         />
-        <button className="btn btnPrimary" type="submit" disabled={isLoading || !hasUsername}>
+        <button
+          className={isRefresh ? 'btn' : 'btn btnPrimary'}
+          type="submit"
+          disabled={isLoading || !hasUsername}
+          aria-busy={isLoading}
+          title={isRefresh ? 'Fetch the latest data from Chess.com and save today\'s Puzzle Rush snapshot' : undefined}
+        >
           {isLoading ? <span className="spinner" aria-hidden="true" /> : null}
-          {isLoading ? 'Loading…' : 'View stats'}
+          {isLoading ? 'Loading…' : isRefresh ? '↻ Refresh' : 'View stats'}
         </button>
       </div>
 
@@ -67,17 +74,6 @@ export function UsernameSearch({
             </button>
           ))}
         </div>
-        {activeUsername ? (
-          <button
-            type="button"
-            className="btn btnGhost"
-            onClick={onRefreshCached}
-            disabled={isLoading}
-            title="Redraw the streak and snapshot charts from data already saved, without calling Chess.com again."
-          >
-            ↻ Reload saved snapshots
-          </button>
-        ) : null}
       </div>
 
       {error ? <div className="errorBox" role="alert">{error}</div> : null}

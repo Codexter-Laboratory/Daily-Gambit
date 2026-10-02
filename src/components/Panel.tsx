@@ -1,15 +1,17 @@
 import { ReactNode } from 'react';
 
 type PanelProps = {
-  title?: string;
+  title?: ReactNode;
+  /** Data is refreshing: keep the content visible but dimmed, with a progress bar. */
+  busy?: boolean;
   children: ReactNode;
 };
 
-export function Panel({ title, children }: PanelProps) {
+export function Panel({ title, busy = false, children }: PanelProps) {
   return (
-    <div className="panel">
+    <div className={busy ? 'panel panelBusy' : 'panel'} aria-busy={busy}>
       {title ? <div className="panelTitle">{title}</div> : null}
-      {children}
+      <div className="panelBody">{children}</div>
     </div>
   );
 }

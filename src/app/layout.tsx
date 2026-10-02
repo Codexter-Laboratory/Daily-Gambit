@@ -55,9 +55,9 @@ export default function RootLayout({
           <main className="appMain">{children}</main>
           <footer className="appFooter">
             <div className="appFooterInner">
-              <span>Daily Gambit · Built with Next.js, TypeScript, Prisma and Recharts</span>
+              <span />
               <span>
-                Data from the{' '}
+                Daily Gambit · Data from the{' '}
                 <a href="https://www.chess.com/news/view/published-data-api" target="_blank" rel="noopener noreferrer">
                   Chess.com PubAPI
                 </a>
