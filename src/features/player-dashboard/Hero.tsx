@@ -27,7 +27,6 @@ export function Hero({ children }: { children: ReactNode }) {
   return (
     <div className="stack">
       <section className="hero">
-        <div className="heroEyebrow">Built on the Chess.com public API</div>
         <h1 className="heroTitle">
           Your Chess.com profile,
           <br />

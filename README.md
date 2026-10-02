@@ -1,6 +1,6 @@
-# Pawn Up
+# Daily Gambit
 
-Pawn Up is a dashboard for Chess.com players. Type in a username and it pulls their ratings, clubs, tournaments, team matches, ongoing games and Puzzle Rush history from Chess.com's public API. It also keeps a daily Puzzle Rush streak, which Chess.com doesn't show you itself.
+Daily Gambit is a dashboard for Chess.com players. Type in a username and it pulls their ratings, clubs, tournaments, team matches, ongoing games and Puzzle Rush history from Chess.com's public API. It also keeps a daily Puzzle Rush streak, which Chess.com doesn't show you itself.
 
 I built it because I play a lot on Chess.com and wanted one page that shows everything about my account, plus a way to see whether I'm actually doing puzzles every day.
 
@@ -39,7 +39,7 @@ npx prisma studio       # browse and edit the database in your browser
 
 ## How to use it
 
-Enter a Chess.com username and press Enter or **View stats**, or pick one of the example players under the search bar. Pawn Up fetches fresh data from Chess.com, saves today's Puzzle Rush snapshot and fills in every chart and card on the page.
+Enter a Chess.com username and press Enter or **View stats**, or pick one of the example players under the search bar. Daily Gambit fetches fresh data from Chess.com, saves today's Puzzle Rush snapshot and fills in every chart and card on the page.
 
 The page URL updates to `?u=<username>`, so you can share a link straight to a player's dashboard.
 
@@ -47,6 +47,10 @@ Once a player is loaded, **Reload saved snapshots** redraws the streak and snaps
 
 ## How the streak works
 
-Chess.com only gives you running totals for Puzzle Rush, not a day-by-day history, so Pawn Up builds that history itself. Each time you look a player up, it saves a snapshot of your attempt count for that day. A day counts toward the streak if the count went up compared to the previous saved day.
+Chess.com only gives you running totals for Puzzle Rush, not a day-by-day history, so Daily Gambit builds that history itself. Each time you look a player up, it saves a snapshot of your attempt count for that day. A day counts toward the streak if the count went up compared to the previous saved day.
 
-The catch is that a day only gets recorded if you load your stats on it. If you puzzle on Tuesday but don't open Pawn Up until Thursday, Tuesday won't show up, so get in the habit of loading your stats on the days you play.
+The catch is that a day only gets recorded if you load your stats on it. If you puzzle on Tuesday but don't open Daily Gambit until Thursday, Tuesday won't show up, so get in the habit of loading your stats on the days you play.
+
+## Disclaimer
+
+Daily Gambit is an independent project and is not affiliated with, endorsed by or sponsored by Chess.com. Chess.com is a trademark of Chess.com, LLC. Player data comes from the public Chess.com PubAPI.

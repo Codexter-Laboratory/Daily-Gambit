@@ -1,9 +1,9 @@
 import './globals.css';
 
-const REPO_URL = 'https://github.com/Codexter-Laboratory/Pawn-up';
+const REPO_URL = 'https://github.com/Codexter-Laboratory/Daily-Gambit';
 
 export const metadata = {
-  title: 'Pawn Up · Chess.com stats dashboard',
+  title: 'Daily Gambit · Chess stats dashboard',
   description:
     'Ratings, Puzzle Rush streaks, live games, clubs and tournaments for any Chess.com player, in one dashboard.',
   icons: {
@@ -32,7 +32,7 @@ export default function RootLayout({
             <div className="appHeaderInner">
               <a className="brand" href="/">
                 <span className="brandMark" aria-hidden="true">♟</span>
-                Pawn Up
+                Daily Gambit
               </a>
               <nav className="headerNav" aria-label="Main">
                 <a
@@ -54,7 +54,7 @@ export default function RootLayout({
           <main className="appMain">{children}</main>
           <footer className="appFooter">
             <div className="appFooterInner">
-              <span>Pawn Up · Built with Next.js, TypeScript, Prisma and Recharts</span>
+              <span>Daily Gambit · Built with Next.js, TypeScript, Prisma and Recharts</span>
               <span>
                 Data from the{' '}
                 <a href="https://www.chess.com/news/view/published-data-api" target="_blank" rel="noopener noreferrer">
