@@ -1,0 +1,48 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 81c9c60..dfb15bc 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -695,3 +695,15 @@ select option {
+   height: 84px;
+   border-radius: 16px;
+ }
++
++/* Player page: room under the sticky header and above the footer.
++   The landing page has none so the hero fits on one screen. */
++.dashboardPage {
++  padding: 24px 0 40px;
++}
++
++@media (max-width: 520px) {
++  .dashboardPage {
++    padding: 16px 0 32px;
++  }
++}
+diff --git a/src/features/player-dashboard/PuzzleRushChart.tsx b/src/features/player-dashboard/PuzzleRushChart.tsx
+index be4e67d..7bb8bbc 100644
+--- a/src/features/player-dashboard/PuzzleRushChart.tsx
++++ b/src/features/player-dashboard/PuzzleRushChart.tsx
+@@ -64,7 +64,9 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
+ 
+   const hasPuzzleRush =
+     puzzleRushSummary != null &&
+-    (puzzleRushSummary.dailyAttempts != null || puzzleRushSummary.bestScore != null || days > 0);
++    (puzzleRushSummary.dailyAttempts != null ||
++      puzzleRushSummary.bestScore != null ||
++      (data?.puzzleRush?.points ?? []).some((p) => p.attemptsTotal != null));
+ 
+   if (!hasPuzzleRush) {
+     return (
+diff --git a/src/features/player-dashboard/index.tsx b/src/features/player-dashboard/index.tsx
+index d1c5810..3f77aca 100644
+--- a/src/features/player-dashboard/index.tsx
++++ b/src/features/player-dashboard/index.tsx
+@@ -106,7 +106,7 @@ export function PlayerDashboard() {
+   }
+ 
+   return (
+-    <div className="stack">
++    <div className="stack dashboardPage">
+       {search}
+ 
+       <PlayerProfileSection

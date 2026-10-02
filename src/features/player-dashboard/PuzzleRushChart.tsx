@@ -64,7 +64,9 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
 
   const hasPuzzleRush =
     puzzleRushSummary != null &&
-    (puzzleRushSummary.dailyAttempts != null || puzzleRushSummary.bestScore != null || days > 0);
+    (puzzleRushSummary.dailyAttempts != null ||
+      puzzleRushSummary.bestScore != null ||
+      (data?.puzzleRush?.points ?? []).some((p) => p.attemptsTotal != null));
 
   if (!hasPuzzleRush) {
     return (
