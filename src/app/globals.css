@@ -591,6 +591,9 @@ select option {
 }
 
 @media (max-width: 520px) {
+  .appFooterInner {
+    padding: 18px 20px;
+  }
   .appMain {
     padding: 16px 16px 32px;
   }
