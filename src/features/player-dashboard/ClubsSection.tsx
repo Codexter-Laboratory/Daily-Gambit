@@ -15,8 +15,8 @@ type ClubsSectionProps = {
 };
 
 export function ClubsSection({ clubsLoading, clubs, hasUsername }: ClubsSectionProps) {
-  if (clubsLoading) {
-    return <LoadingState title="Club Memberships" message="Loading clubs…" />;
+  if (clubsLoading && !clubs) {
+    return <LoadingState title="Club Memberships" message="Loading clubs…" rows={2} />;
   }
 
   const typedClubs = clubs as { clubs: Club[] } | null;
@@ -24,6 +24,7 @@ export function ClubsSection({ clubsLoading, clubs, hasUsername }: ClubsSectionP
     return (
       <EmptyState
         title="Club Memberships"
+        busy={clubsLoading}
         message={
           hasUsername
             ? 'No club memberships.'
@@ -34,7 +35,7 @@ export function ClubsSection({ clubsLoading, clubs, hasUsername }: ClubsSectionP
   }
 
   return (
-    <Panel title={`Club Memberships (${typedClubs.clubs.length})`}>
+    <Panel title={`Club Memberships (${typedClubs.clubs.length})`} busy={clubsLoading}>
       <div
         style={{
           display: 'grid',

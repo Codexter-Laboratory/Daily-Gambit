@@ -1,15 +1,20 @@
-import { Panel } from '../../components';
+import { LoadingState, Panel } from '../../components';
 import type { PuzzleRushPoint } from './types';
 
 type SnapshotsTableProps = {
   points: PuzzleRushPoint[];
+  loading: boolean;
 };
 
-export function SnapshotsTable({ points }: SnapshotsTableProps) {
+export function SnapshotsTable({ points, loading }: SnapshotsTableProps) {
+  if (loading && points.length === 0) {
+    return <LoadingState title="Recent Puzzle Rush Snapshots" message="Loading snapshots…" rows={4} />;
+  }
+
   const rows = points.slice(-10).reverse();
 
   return (
-    <Panel title="Recent Puzzle Rush Snapshots">
+    <Panel title="Recent Puzzle Rush Snapshots" busy={loading}>
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
         The 10 most recent daily snapshots. One is saved each day this player is looked up.
       </div>

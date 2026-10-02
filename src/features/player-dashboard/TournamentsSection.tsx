@@ -28,7 +28,7 @@ export function TournamentsSection({
   tournaments,
   hasUsername,
 }: TournamentsSectionProps) {
-  if (tournamentsLoading) {
+  if (tournamentsLoading && !tournaments) {
     return <LoadingState title="Tournament History" message="Loading tournaments…" />;
   }
 
@@ -37,6 +37,7 @@ export function TournamentsSection({
     return (
       <EmptyState
         title="Tournament History"
+        busy={tournamentsLoading}
         message={
           hasUsername
             ? 'No tournament history.'
@@ -52,7 +53,7 @@ export function TournamentsSection({
     (typedTournaments.registered?.length ?? 0) > 0;
 
   return (
-    <Panel title="Tournament History">
+    <Panel title="Tournament History" busy={tournamentsLoading}>
       {typedTournaments.finished && typedTournaments.finished.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div

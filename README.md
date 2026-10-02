@@ -43,7 +43,7 @@ Enter a Chess.com username and press Enter or **View stats**, or pick one of the
 
 The page URL updates to `?u=<username>`, so you can share a link straight to a player's dashboard.
 
-Once a player is loaded, **Reload saved snapshots** redraws the streak and snapshot charts from what's already in the database, without calling Chess.com again.
+Once a player is loaded, the button changes to **Refresh**, which fetches the latest data for that player again.
 
 ## How the streak works
 
