@@ -1,23 +1,30 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "PuzzleRushSnapshot" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
-    "asOf" DATETIME NOT NULL,
+    "asOf" TIMESTAMP(3) NOT NULL,
     "attemptsTotal" INTEGER,
     "scoreTotal" INTEGER,
-    "fetchedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PuzzleRushSnapshot_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "DailyPuzzleCheckin" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
-    "asOf" DATETIME NOT NULL,
+    "asOf" TIMESTAMP(3) NOT NULL,
     "solved" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DailyPuzzleCheckin_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -31,3 +38,4 @@ CREATE INDEX "DailyPuzzleCheckin_username_asOf_idx" ON "DailyPuzzleCheckin"("use
 
 -- CreateIndex
 CREATE UNIQUE INDEX "DailyPuzzleCheckin_username_asOf_key" ON "DailyPuzzleCheckin"("username", "asOf");
+

@@ -6,20 +6,21 @@ I built it because I play a lot on Chess.com and wanted one page that shows ever
 
 ## Built with
 
-Next.js (App Router) and TypeScript, Tailwind CSS v4 for styling, TanStack Query for fetching and caching, Zustand for client state, Recharts for the charts and chess.js for anything that needs to understand a position. Puzzle Rush snapshots are stored in SQLite through Prisma. All player data comes from the [Chess.com PubAPI](https://www.chess.com/news/view/published-data-api).
+Next.js (App Router) and TypeScript, Tailwind CSS v4 for styling, TanStack Query for fetching and caching, Zustand for client state, Recharts for the charts and chess.js for anything that needs to understand a position. Puzzle Rush snapshots are stored in Postgres through Prisma. All player data comes from the [Chess.com PubAPI](https://www.chess.com/news/view/published-data-api).
 
 ## Running it locally
 
-You'll need Node.js (the current LTS is fine) and npm.
+You'll need Node.js (the current LTS is fine), npm and a Postgres database. A free [Neon](https://neon.tech) database works, as does a local Postgres.
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env
+# edit .env and set DATABASE_URL and DATABASE_URL_UNPOOLED (both can be the same URL locally)
 npx prisma migrate dev
 npm run dev
 ```
 
-The default `DATABASE_URL` points to a local SQLite file (`file:./dev.db`), so there's nothing else to set up. The app runs at http://localhost:3000.
+The app runs at http://localhost:3000.
 
 Other commands you might need:
 
@@ -29,6 +30,12 @@ npm run start           # serve the production build
 npx prisma generate     # regenerate the Prisma client after changing the schema
 npx prisma studio       # browse and edit the database in your browser
 ```
+
+## Deploying to Vercel
+
+1. Import the repository at [vercel.com/new](https://vercel.com/new). The framework preset is detected as Next.js; leave the defaults.
+2. In the project's **Storage** tab, add a **Neon** Postgres database and connect it to the project. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for you.
+3. Redeploy. The `vercel-build` script runs `prisma migrate deploy` before `next build`, so the tables are created on the first deploy.
 
 ## How to use it
 
