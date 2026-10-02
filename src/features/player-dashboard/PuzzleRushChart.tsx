@@ -40,13 +40,15 @@ const METRICS: { key: keyof PuzzleRushSummary; label: string; color: string; suf
   { key: 'dailyAttempts', label: 'Daily attempts', color: 'var(--accent)' },
   { key: 'dailyScore', label: 'Daily score', color: 'var(--good)' },
   { key: 'bestScore', label: 'Best score', color: 'var(--warn)' },
-  { key: 'accuracy', label: 'Accuracy', color: 'var(--violet)', suffix: '%' },
+  { key: 'avgScorePerAttempt', label: 'Avg score / attempt', color: 'var(--violet)' },
 ];
 
 const AXIS_TICK = { fill: 'rgba(255,255,255,0.6)', fontSize: 11 };
 
 export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loading }: PuzzleRushChartProps) {
   const days = data?.puzzleRush?.points?.length ?? 0;
+  // The line chart plots day-over-day change, which needs at least two saved days.
+  const hasDeltas = attemptsChart.some((p) => p.attemptsDelta !== null || p.scoreDelta !== null);
 
   if (!puzzleRushSummary && loading) {
     return (
@@ -96,6 +98,12 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
         })}
       </div>
 
+      {!hasDeltas ? (
+        <div className="chartEmpty">
+          The daily chart appears once two different days are saved. Look this player up again
+          tomorrow.
+        </div>
+      ) : (
       <div className="chartBox" style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={attemptsChart} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
@@ -133,6 +141,7 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
           </LineChart>
         </ResponsiveContainer>
       </div>
+      )}
 
       <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
         {days > 1

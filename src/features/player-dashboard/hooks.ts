@@ -138,7 +138,17 @@ export function usePlayerDashboard() {
           })
         : Promise.resolve();
 
-      const profileResult = await runLoader(setProfileLoading, setProfile, () => services.fetchProfile(clean));
+      // Tell "no such player" apart from "Chess.com / our API is having trouble".
+      const profileFailure: { kind: 'not_found' | 'unavailable' | null } = { kind: null };
+      const profileResult = await runLoader(setProfileLoading, setProfile, async () => {
+        try {
+          return await services.fetchProfile(clean);
+        } catch (e) {
+          const notFound = e instanceof services.ApiRequestError && (e.status === 404 || e.status === 400);
+          profileFailure.kind = notFound ? 'not_found' : 'unavailable';
+          return null;
+        }
+      });
       if (gen !== generation.current) return;
 
       if (!profileResult) {
@@ -146,7 +156,11 @@ export function usePlayerDashboard() {
         setIsRefreshing(false);
         activeUsernameRef.current = null;
         setActiveUsername(null);
-        setError("Couldn't find that Chess.com username. Please check the spelling and try again.");
+        setError(
+          profileFailure.kind === 'unavailable'
+            ? "Couldn't reach Chess.com right now. Please try again in a moment."
+            : "Couldn't find that Chess.com username. Please check the spelling and try again."
+        );
         return;
       }
 

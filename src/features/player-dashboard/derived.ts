@@ -1,4 +1,5 @@
 import type { DashboardResponse, PuzzleRushPoint } from './types';
+import { extractPuzzleRush } from '../../lib/puzzleRush';
 
 export type StatsSummary = {
   chess: { label: string; rating: number | null; date: string | null; games: number | null; win: number | null; loss: number | null; draw: number | null }[];
@@ -13,9 +14,7 @@ export function computeStatsSummary(stats: unknown): StatsSummary | null {
   if (!stats) return null;
   const s = stats as Record<string, unknown>;
 
-  const tc = s?.tactics as Record<string, unknown> | undefined;
-  const puzzleRushDaily = (tc?.puzzle_rush as Record<string, unknown>)?.daily as Record<string, number> | undefined;
-  const puzzleRushBest = (tc?.puzzle_rush as Record<string, unknown>)?.best as Record<string, number> | undefined;
+  const rush = extractPuzzleRush(stats);
 
   const chess = [
     ['Bullet', s?.chess_bullet],
@@ -42,9 +41,9 @@ export function computeStatsSummary(stats: unknown): StatsSummary | null {
       .map(([label, obj]) => ({ label, ...summarizeTimeControl(obj) }))
       .filter((x) => x.rating !== null || x.games !== null),
     puzzles: {
-      rushDailyAttempts: typeof puzzleRushDaily?.total_attempts === 'number' ? puzzleRushDaily.total_attempts : null,
-      rushDailyScore: typeof puzzleRushDaily?.score === 'number' ? puzzleRushDaily.score : null,
-      rushBestScore: typeof puzzleRushBest?.score === 'number' ? puzzleRushBest.score : null,
+      rushDailyAttempts: rush.dailyAttempts,
+      rushDailyScore: rush.dailyScore,
+      rushBestScore: rush.bestScore,
     },
   };
 }
@@ -75,13 +74,15 @@ export function computeAttemptsChart(
     }));
   }
 
+  // No saved history yet: show today's totals only. Do NOT pass them off as a daily change
+  // (the old code used the running total as the delta, which drew a bogus spike).
   const today = new Date().toISOString().slice(0, 10);
   return [{
     date: today,
-    attemptsDelta: statsSummary.puzzles.rushDailyAttempts ?? 0,
-    scoreDelta: statsSummary.puzzles.rushDailyScore ?? 0,
-    totalAttempts: statsSummary.puzzles.rushDailyAttempts ?? 0,
-    totalScore: statsSummary.puzzles.rushDailyScore ?? 0,
+    attemptsDelta: null,
+    scoreDelta: null,
+    totalAttempts: statsSummary.puzzles.rushDailyAttempts,
+    totalScore: statsSummary.puzzles.rushDailyScore,
   }];
 }
 
@@ -89,7 +90,8 @@ export type PuzzleRushSummary = {
   dailyAttempts: number | null;
   dailyScore: number | null;
   bestScore: number | null;
-  accuracy: number | null;
+  /** Average score per attempt (score divided by attempts). Not a percentage. */
+  avgScorePerAttempt: number | null;
   lastUpdated: string;
 };
 
@@ -99,13 +101,15 @@ export function computePuzzleRushSummary(statsSummary: StatsSummary | null): Puz
   const dailyAttempts = statsSummary.puzzles.rushDailyAttempts;
   const dailyScore = statsSummary.puzzles.rushDailyScore;
   const bestScore = statsSummary.puzzles.rushBestScore;
-  const accuracy = dailyAttempts && dailyScore ? Math.round((dailyScore / dailyAttempts) * 100) : null;
+  // This is score / attempts, which is an average score, not an accuracy percentage.
+  const avgScorePerAttempt =
+    dailyAttempts && dailyScore != null ? Math.round((dailyScore / dailyAttempts) * 10) / 10 : null;
 
   return {
     dailyAttempts,
     dailyScore,
     bestScore,
-    accuracy,
+    avgScorePerAttempt,
     lastUpdated: new Date().toLocaleString(),
   };
 }

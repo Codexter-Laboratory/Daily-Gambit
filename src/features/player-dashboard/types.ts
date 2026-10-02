@@ -31,4 +31,6 @@ export type DashboardResponse = {
 export type GamesData = {
   points: { date: string; rating: number; result: 'win' | 'loss' | 'draw' | 'other' }[];
   summary: { games: number; win: number; loss: number; draw: number };
+  /** Months whose archive could not be loaded; 0 means complete. */
+  missingMonths?: number;
 };

@@ -18,6 +18,8 @@ type GamesRatingChartProps = {
   setMonths: (v: number) => void;
   ratingChart: RatingChartPoint[];
   gamesSummary: { games: number; win: number; loss: number; draw: number } | null;
+  /** Months of the lookback that could not be loaded from Chess.com. */
+  missingMonths?: number;
   loading: boolean;
   onCategoryChange: (timeClass: GamesTimeClass, months: number) => void;
   onLookbackChange: (timeClass: GamesTimeClass, months: number) => void;
@@ -51,6 +53,7 @@ export function GamesRatingChart({
   setMonths,
   ratingChart,
   gamesSummary,
+  missingMonths = 0,
   loading,
   onCategoryChange,
   onLookbackChange,
@@ -164,6 +167,9 @@ export function GamesRatingChart({
 
       <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
         Rating after each game in the last {months} months, from Chess.com game archives.
+        {missingMonths > 0
+          ? ` ${missingMonths} of those months could not be loaded, so the totals above are incomplete. Try refreshing.`
+          : ''}
       </div>
     </Panel>
   );

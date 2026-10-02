@@ -130,6 +130,7 @@ export function PlayerDashboard() {
           setMonths={setMonths}
           ratingChart={ratingChart}
           gamesSummary={games?.summary ?? null}
+          missingMonths={games?.missingMonths ?? 0}
           loading={gamesLoading}
           onCategoryChange={handleGamesFilterChange}
           onLookbackChange={handleGamesFilterChange}
