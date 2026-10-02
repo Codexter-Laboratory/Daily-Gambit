@@ -11,6 +11,7 @@ import { toFriendlyErrorMessage } from '../../utils/errorMessage';
 
 export function usePlayerDashboard() {
   const [username, setUsername] = useState('');
+  const [activeUsername, setActiveUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -168,10 +169,11 @@ export function usePlayerDashboard() {
 
   const refreshAll = useCallback(
     async (nextUsername = username, options?: { withIngest?: boolean }) => {
-      const clean = nextUsername.replace(/\s+/g, '').trim();
+      const clean = nextUsername.replace(/\s+/g, '').trim().toLowerCase();
       if (!clean) return;
 
       setError(null);
+      setActiveUsername(clean);
 
       if (options?.withIngest) {
         try {
@@ -182,17 +184,13 @@ export function usePlayerDashboard() {
       }
 
       try {
-        await loadProfile(clean);
+        const profileResult = await loadProfile(clean);
 
-        const profileResponse = await fetch(`/api/profile?username=${encodeURIComponent(clean)}`);
-        const profileData = await profileResponse.json();
-
-        if (!profileResponse.ok || !profileData.profile) {
+        if (!profileResult) {
+          setActiveUsername(null);
           setError("Couldn't find that Chess.com username. Please check the spelling and try again.");
           return;
         }
-
-        setError(null);
 
         await Promise.allSettled([
           loadDashboard(clean),
@@ -252,6 +250,7 @@ export function usePlayerDashboard() {
   return {
     username,
     setUsername,
+    activeUsername,
     error,
     data,
     statsLoading,

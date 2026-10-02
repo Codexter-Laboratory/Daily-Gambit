@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useMounted } from '../../hooks/useMounted';
 import { Panel } from '../../components';
 import { usePlayerDashboard } from './hooks';
+import { Hero } from './Hero';
 import { UsernameSearch } from './UsernameSearch';
 import { StatCardsSection } from './StatCardsSection';
 import { PlayerProfileSection } from './PlayerProfileSection';
@@ -18,6 +20,7 @@ export function PlayerDashboard() {
   const {
     username,
     setUsername,
+    activeUsername,
     error,
     data,
     statsLoading,
@@ -44,37 +47,65 @@ export function PlayerDashboard() {
     puzzleRushSummary,
     ratingChart,
     isLoading,
-    hasUsername,
     loadDashboard,
     loadGames,
     refreshAll,
   } = usePlayerDashboard();
 
+  // Load the player named in ?u= once, so a dashboard link can be shared.
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (!mounted || initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    const fromUrl = new URLSearchParams(window.location.search).get('u')?.trim();
+    if (fromUrl) {
+      setUsername(fromUrl);
+      refreshAll(fromUrl, { withIngest: true });
+    }
+  }, [mounted, refreshAll, setUsername]);
+
+  // Keep ?u= in sync with the loaded player.
+  useEffect(() => {
+    if (!mounted) return;
+    const url = new URL(window.location.href);
+    if (activeUsername) url.searchParams.set('u', activeUsername);
+    else url.searchParams.delete('u');
+    window.history.replaceState(null, '', url);
+  }, [mounted, activeUsername]);
+
   if (!mounted) {
-    return <Panel>Loading UI…</Panel>;
+    return <Panel>Loading…</Panel>;
   }
 
-  const handleCategoryChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
-    if (hasUsername) loadGames(username, nextTimeClass, nextMonths);
+  const handleGamesFilterChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
+    if (activeUsername) loadGames(activeUsername, nextTimeClass, nextMonths);
   };
 
-  const handleLookbackChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
-    if (hasUsername) loadGames(username, nextTimeClass, nextMonths);
-  };
+  const search = (
+    <UsernameSearch
+      username={username}
+      onUsernameChange={setUsername}
+      onSearch={(name) => refreshAll(name, { withIngest: true })}
+      onRefreshCached={() => activeUsername && loadDashboard(activeUsername)}
+      isLoading={isLoading}
+      activeUsername={activeUsername}
+      error={error}
+    />
+  );
+
+  if (!activeUsername) {
+    return <Hero>{search}</Hero>;
+  }
 
   return (
-    <div>
-      <UsernameSearch
-        username={username}
-        onUsernameChange={setUsername}
-        onLoadPlayerStats={() => refreshAll(username, { withIngest: true })}
-        onRefreshCached={() => loadDashboard(username)}
-        isLoading={isLoading}
-        hasUsername={hasUsername}
-        error={error}
-      />
+    <div className="stack">
+      {search}
 
-      <div style={{ height: 14 }} />
+      <PlayerProfileSection
+        profileLoading={profileLoading}
+        profile={profile as { avatar?: string; username: string; name?: string; title?: string; player_id: string; location?: string; joined: number; followers: number; status: string; fide?: number; is_streamer?: boolean; twitch_url?: string; last_online: number; url?: string } | null}
+        onlineStatus={onlineStatus as { online: boolean } | null}
+      />
 
       <StatCardsSection
         data={data}
@@ -82,24 +113,7 @@ export function PlayerDashboard() {
         statsSummary={statsSummary}
       />
 
-      <div style={{ height: 24 }} />
-
-      <PlayerProfileSection
-        profileLoading={profileLoading}
-        profile={profile as { avatar?: string; username: string; name?: string; title?: string; player_id: string; location?: string; joined: number; followers: number; status: string; fide?: number; is_streamer?: boolean; twitch_url?: string; last_online: number } | null}
-        onlineStatus={onlineStatus as { online: boolean } | null}
-      />
-
-      <div style={{ height: 24 }} />
-
       <div className="grid2">
-        <PuzzleRushChart
-          puzzleRushSummary={puzzleRushSummary}
-          attemptsChart={attemptsChart}
-          data={data}
-          hasUsername={hasUsername}
-        />
-
         <GamesRatingChart
           timeClass={timeClass}
           setTimeClass={setTimeClass}
@@ -107,54 +121,49 @@ export function PlayerDashboard() {
           setMonths={setMonths}
           ratingChart={ratingChart}
           gamesSummary={games?.summary ?? null}
-          hasUsername={hasUsername}
-          onCategoryChange={handleCategoryChange}
-          onLookbackChange={handleLookbackChange}
+          onCategoryChange={handleGamesFilterChange}
+          onLookbackChange={handleGamesFilterChange}
+        />
+
+        <PuzzleRushChart
+          puzzleRushSummary={puzzleRushSummary}
+          attemptsChart={attemptsChart}
+          data={data}
         />
       </div>
-
-      <div style={{ height: 24 }} />
-
-      <CurrentGamesTable
-        currentGamesLoading={currentGamesLoading}
-        currentGames={currentGames}
-        username={username}
-        hasUsername={hasUsername}
-      />
-
-      <div style={{ height: 24 }} />
 
       <ToMoveGamesSection
         toMoveGamesLoading={toMoveGamesLoading}
         toMoveGames={toMoveGames}
-        hasUsername={hasUsername}
+        hasUsername
       />
 
-      <div style={{ height: 24 }} />
+      <CurrentGamesTable
+        currentGamesLoading={currentGamesLoading}
+        currentGames={currentGames}
+        username={activeUsername}
+        hasUsername
+      />
 
       <ClubsSection
         clubsLoading={clubsLoading}
         clubs={clubs}
-        hasUsername={hasUsername}
+        hasUsername
       />
 
-      <div style={{ height: 24 }} />
+      <div className="grid2">
+        <TournamentsSection
+          tournamentsLoading={tournamentsLoading}
+          tournaments={tournaments}
+          hasUsername
+        />
 
-      <TournamentsSection
-        tournamentsLoading={tournamentsLoading}
-        tournaments={tournaments}
-        hasUsername={hasUsername}
-      />
-
-      <div style={{ height: 24 }} />
-
-      <TeamMatchesSection
-        matchesLoading={matchesLoading}
-        matches={matches}
-        hasUsername={hasUsername}
-      />
-
-      <div style={{ height: 24 }} />
+        <TeamMatchesSection
+          matchesLoading={matchesLoading}
+          matches={matches}
+          hasUsername
+        />
+      </div>
 
       <SnapshotsTable points={data?.puzzleRush?.points ?? []} />
     </div>

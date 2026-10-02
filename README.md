@@ -32,14 +32,14 @@ npx prisma studio       # browse and edit the database in your browser
 
 ## How to use it
 
-Enter a Chess.com username and pick one of the two buttons.
+Enter a Chess.com username and press Enter or **View stats**, or pick one of the example players under the search bar. Pawn Up fetches fresh data from Chess.com, saves today's Puzzle Rush snapshot and fills in every chart and card on the page.
 
-Load Player Stats fetches fresh data from Chess.com, saves today's Puzzle Rush snapshot and updates every chart and card on the page.
+The page URL updates to `?u=<username>`, so you can share a link straight to a player's dashboard.
 
-Refresh cached view redraws the dashboard from what's already stored, without hitting the API again.
+Once a player is loaded, **Reload saved snapshots** redraws the streak and snapshot charts from what's already in the database, without calling Chess.com again.
 
 ## How the streak works
 
-Chess.com only gives you running totals for Puzzle Rush, not a day-by-day history, so Pawn Up builds that history itself. Each time you press Load Player Stats, it saves a snapshot of your attempt count for that day. A day counts toward the streak if the count went up compared to the previous saved day.
+Chess.com only gives you running totals for Puzzle Rush, not a day-by-day history, so Pawn Up builds that history itself. Each time you look a player up, it saves a snapshot of your attempt count for that day. A day counts toward the streak if the count went up compared to the previous saved day.
 
 The catch is that a day only gets recorded if you load your stats on it. If you puzzle on Tuesday but don't open Pawn Up until Thursday, Tuesday won't show up, so get in the habit of loading your stats on the days you play.

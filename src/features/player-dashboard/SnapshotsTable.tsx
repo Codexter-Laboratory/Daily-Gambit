@@ -6,12 +6,12 @@ type SnapshotsTableProps = {
 };
 
 export function SnapshotsTable({ points }: SnapshotsTableProps) {
-  const rows = points.slice(0, 10);
+  const rows = points.slice(-10).reverse();
 
   return (
     <Panel title="Recent Puzzle Rush Snapshots">
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        Daily snapshots captured when you click &ldquo;Load Player Stats&rdquo;.
+        The 10 most recent daily snapshots. One is saved each day this player is looked up.
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -38,7 +38,7 @@ export function SnapshotsTable({ points }: SnapshotsTableProps) {
             ) : (
               <tr>
                 <td colSpan={3} style={{ padding: '10px 6px', color: 'rgba(255,255,255,0.7)' }}>
-                  No snapshots yet. Use &ldquo;Load Player Stats&rdquo;.
+                  No snapshots yet.
                 </td>
               </tr>
             )}

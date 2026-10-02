@@ -18,7 +18,6 @@ type GamesRatingChartProps = {
   setMonths: (v: number) => void;
   ratingChart: RatingChartPoint[];
   gamesSummary: { games: number; win: number; loss: number; draw: number } | null;
-  hasUsername: boolean;
   onCategoryChange: (timeClass: GamesTimeClass, months: number) => void;
   onLookbackChange: (timeClass: GamesTimeClass, months: number) => void;
 };
@@ -42,6 +41,8 @@ const CHART_TOOLTIP_STYLE = {
   borderRadius: 12,
 };
 
+const AXIS_TICK = { fill: 'rgba(255,255,255,0.6)', fontSize: 11 };
+
 export function GamesRatingChart({
   timeClass,
   setTimeClass,
@@ -49,12 +50,11 @@ export function GamesRatingChart({
   setMonths,
   ratingChart,
   gamesSummary,
-  hasUsername,
   onCategoryChange,
   onLookbackChange,
 }: GamesRatingChartProps) {
   return (
-    <Panel title="Games graph (choose category)">
+    <Panel title="Rating history">
       <div className="row" style={{ marginBottom: 10 }}>
         <label className="muted" style={{ fontSize: 12 }}>Category</label>
         <select
@@ -88,23 +88,37 @@ export function GamesRatingChart({
         </select>
       </div>
 
-      <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-        Graph: your rating after each game (from Chess.com archives) over the last {months} months.
-        {gamesSummary ? (
-          <>
-            {' '}
-            · Games: {gamesSummary.games} · W {gamesSummary.win} / L {gamesSummary.loss} / D{' '}
-            {gamesSummary.draw}
-          </>
-        ) : null}
+      <div className="metricTiles">
+        <div className="metricTile">
+          <div className="metricValue">{gamesSummary?.games ?? '–'}</div>
+          <div className="metricLabel">Games</div>
+        </div>
+        <div className="metricTile">
+          <div className="metricValue" style={{ color: 'var(--good)' }}>{gamesSummary?.win ?? '–'}</div>
+          <div className="metricLabel">Wins</div>
+        </div>
+        <div className="metricTile">
+          <div className="metricValue" style={{ color: 'var(--bad)' }}>{gamesSummary?.loss ?? '–'}</div>
+          <div className="metricLabel">Losses</div>
+        </div>
+        <div className="metricTile">
+          <div className="metricValue" style={{ color: 'var(--muted)' }}>{gamesSummary?.draw ?? '–'}</div>
+          <div className="metricLabel">Draws</div>
+        </div>
       </div>
 
-      <div className="chartBox" style={{ height: 320, minHeight: 200 }}>
+      <div className="chartBox" style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={ratingChart}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" />
-            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
-            <YAxis tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+          <LineChart data={ratingChart} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
+            <YAxis
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              domain={['dataMin - 25', 'dataMax + 25']}
+              allowDecimals={false}
+            />
             <Tooltip
               contentStyle={CHART_TOOLTIP_STYLE}
               formatter={(value: unknown) => [String(value ?? '-'), 'Rating']}
@@ -122,15 +136,8 @@ export function GamesRatingChart({
         </ResponsiveContainer>
       </div>
 
-      {!hasUsername ? (
-        <div className="muted" style={{ fontSize: 12, minHeight: 20 }}>
-          Pick a category now; results appear after Load Player Stats.
-        </div>
-      ) : null}
-
-      <div style={{ height: 12 }} />
-      <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
-        📊 Data automatically fetched from Chess.com APIs
+      <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+        Rating after each game in the last {months} months, from Chess.com game archives.
       </div>
     </Panel>
   );
