@@ -1,7 +1,7 @@
 // Chess.com asks API clients to identify themselves with a User-Agent.
 const CHESSCOM_HEADERS = {
   Accept: 'application/json',
-  'User-Agent': 'PawnUp/1.0 (+https://github.com/Codexter-Laboratory/Pawn-up)',
+  'User-Agent': 'DailyGambit/1.0 (+https://github.com/Codexter-Laboratory/Daily-Gambit)',
 };
 
 export type PuzzleRushDailyStats = {
