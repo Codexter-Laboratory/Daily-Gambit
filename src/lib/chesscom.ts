@@ -1,3 +1,9 @@
+// Chess.com asks API clients to identify themselves with a User-Agent.
+const CHESSCOM_HEADERS = {
+  Accept: 'application/json',
+  'User-Agent': 'PawnUp/1.0 (+https://github.com/Codexter-Laboratory/Pawn-up)',
+};
+
 export type PuzzleRushDailyStats = {
   attemptsTotal: number | null;
   scoreTotal: number | null;
@@ -137,7 +143,7 @@ export async function fetchPuzzleRushDailyStats(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
   });
 
@@ -169,7 +175,7 @@ export async function fetchPlayerProfile(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 300 }, // Cache for 5 minutes
   });
@@ -194,7 +200,7 @@ export async function fetchPlayerOnlineStatus(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 60 }, // Cache for 1 minute
   });
@@ -219,7 +225,7 @@ export async function fetchPlayerClubs(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 300 }, // Cache for 5 minutes
   });
@@ -244,7 +250,7 @@ export async function fetchPlayerTournaments(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 300 }, // Cache for 5 minutes
   });
@@ -269,7 +275,7 @@ export async function fetchPlayerMatches(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 300 }, // Cache for 5 minutes
   });
@@ -294,7 +300,7 @@ export async function fetchCurrentGames(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 60 }, // Cache for 1 minute
   });
@@ -319,7 +325,7 @@ export async function fetchToMoveGames(
 
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Accept': 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 60 }, // Cache for 1 minute
   });
@@ -343,7 +349,7 @@ export async function fetchPlayerStats(
   )}/stats`;
   const res = await fetch(url, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     // Keep it reasonably fresh but avoid hammering PubAPI.
     next: { revalidate: 60 },
@@ -434,7 +440,7 @@ export async function fetchRatingSeriesFromArchives(params: {
   )}/games/archives`;
   const indexRes = await fetch(indexUrl, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: CHESSCOM_HEADERS,
     signal,
     next: { revalidate: 60 },
   });
@@ -453,7 +459,7 @@ export async function fetchRatingSeriesFromArchives(params: {
   for (const url of recentArchives) {
     const res = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: CHESSCOM_HEADERS,
       signal,
       next: { revalidate: 60 },
     });
