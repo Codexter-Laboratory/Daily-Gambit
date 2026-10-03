@@ -113,7 +113,7 @@ export function usePlayerDashboard() {
   }, []);
 
   const refreshAll = useCallback(
-    async (nextUsername: string, options?: { withIngest?: boolean }) => {
+    async (nextUsername: string, options?: { withIngest?: boolean; onVerified?: () => void }) => {
       const clean = normalizeUsername(nextUsername);
       if (!clean) return;
       // Say what is wrong with the name instead of sending it to the API and reporting "not found".
@@ -124,16 +124,16 @@ export function usePlayerDashboard() {
 
       const gen = ++generation.current;
       gamesRequest.current++;
-      const isNewPlayer = clean !== activeUsernameRef.current;
+      const previousPlayer = activeUsernameRef.current;
+      const isNewPlayer = clean !== previousPlayer;
       activeUsernameRef.current = clean;
 
       setError(null);
-      setActiveUsername(clean);
       setIsRefreshing(true);
-      // A different player starts from skeletons; the same player keeps its data
-      // on screen while it refreshes.
-      if (isNewPlayer) clearData();
-      setAllLoading(true);
+      // The same player keeps its data on screen while it refreshes. A different player is only
+      // shown after the profile check below passes: switching to the dashboard first made a
+      // misspelled name flash a page of skeletons before the "not found" message replaced it.
+      if (!isNewPlayer) setAllLoading(true);
 
       // Saving today's snapshot runs alongside the profile check; only the
       // snapshot-based dashboard has to wait for it.
@@ -145,7 +145,8 @@ export function usePlayerDashboard() {
 
       // Tell "no such player" apart from "Chess.com / our API is having trouble".
       const profileFailure: { kind: 'not_found' | 'unavailable' | null } = { kind: null };
-      const profileResult = await runLoader(setProfileLoading, setProfile, async () => {
+      // For a new player the profile is held back until the check passes, so it never shows next to the previous player's data.
+      const profileResult = await runLoader(setProfileLoading, isNewPlayer ? () => {} : setProfile, async () => {
         try {
           return await services.fetchProfile(clean);
         } catch (e) {
@@ -159,8 +160,11 @@ export function usePlayerDashboard() {
       if (!profileResult) {
         setAllLoading(false);
         setIsRefreshing(false);
-        activeUsernameRef.current = null;
-        setActiveUsername(null);
+        // Searching for a new name while another player is on screen: stay on that player and
+        // show the error in the search box. Otherwise go back to the landing page.
+        const keepCurrentPlayer = isNewPlayer && previousPlayer !== null;
+        activeUsernameRef.current = keepCurrentPlayer ? previousPlayer : null;
+        if (!keepCurrentPlayer) setActiveUsername(null);
         setError(
           profileFailure.kind === 'unavailable'
             ? "Couldn't reach Chess.com right now. Please try again in a moment."
@@ -168,6 +172,18 @@ export function usePlayerDashboard() {
         );
         return;
       }
+
+      if (isNewPlayer) {
+        // The player exists: now switch to the dashboard, starting from skeletons.
+        clearData();
+        setProfile(profileResult);
+        setActiveUsername(clean);
+        setAllLoading(true);
+        setProfileLoading(false);
+      }
+
+      // The player exists. The caller can now do what should only happen for a real player, like putting it in the URL.
+      options?.onVerified?.();
 
       await Promise.allSettled([
         ingest.then(() => loadDashboard(clean)),

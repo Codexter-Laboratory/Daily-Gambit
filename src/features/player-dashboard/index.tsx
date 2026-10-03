@@ -66,14 +66,26 @@ export function PlayerDashboard() {
   // shared and Back/Forward move between players (or back to the landing page).
   const refreshAllRef = useRef(refreshAll);
   refreshAllRef.current = refreshAll;
+  const activeUsernameRef = useRef(activeUsername);
+  activeUsernameRef.current = activeUsername;
   useEffect(() => {
     if (urlUsername) {
+      // A search puts the name in the URL only after the player was found and is already loading, so there is nothing to start.
+      if (urlUsername === activeUsernameRef.current) return;
       setUsername(urlUsername);
       refreshAllRef.current(urlUsername, { withIngest: true });
     } else {
       clearPlayer();
     }
   }, [urlUsername, setUsername, clearPlayer]);
+
+  // True once the landing page has been on screen with nothing loading. A search typed there
+  // keeps the landing page up while the name is checked. A shared link opened directly has no
+  // landing page on screen yet, so it shows the loading panel instead of flashing the landing page.
+  const landingShown = useRef(false);
+  useEffect(() => {
+    if (mounted && !activeUsername && !isRefreshing) landingShown.current = true;
+  }, [mounted, activeUsername, isRefreshing]);
 
   const showPlayer = (name: string) => {
     const clean = normalizeUsername(name);
@@ -85,7 +97,11 @@ export function PlayerDashboard() {
     if (clean === urlUsername) {
       refreshAll(clean, { withIngest: true });
     } else {
-      router.push(`/?u=${encodeURIComponent(clean)}`, { scroll: false });
+      // The URL changes only once the player is found: a misspelled name leaves the address bar alone.
+      refreshAll(clean, {
+        withIngest: true,
+        onVerified: () => router.push(`/?u=${encodeURIComponent(clean)}`, { scroll: false }),
+      });
     }
   };
 
@@ -112,6 +128,7 @@ export function PlayerDashboard() {
   );
 
   if (!activeUsername) {
+    if (isRefreshing && !landingShown.current) return <Panel>Loading…</Panel>;
     return <Hero>{search}</Hero>;
   }
 
