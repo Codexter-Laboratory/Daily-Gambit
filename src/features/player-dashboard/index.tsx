@@ -124,6 +124,7 @@ export function PlayerDashboard() {
       isLoading={isRefreshing}
       activeUsername={activeUsername}
       error={error}
+      typeToFocus={!activeUsername}
     />
   );
 
