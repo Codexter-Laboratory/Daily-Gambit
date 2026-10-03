@@ -1,4 +1,4 @@
-import type { DashboardResponse, GamesTimeClass } from './types';
+import type { DashboardResponse, GamesData, GamesTimeClass } from './types';
 
 /** An API call that returned an error status. Keeps the status so callers can tell 404 from 5xx. */
 export class ApiRequestError extends Error {
@@ -100,11 +100,7 @@ export async function fetchGames(
   username: string,
   timeClass: GamesTimeClass,
   months: number
-): Promise<{
-  points: { date: string; rating: number; result: 'win' | 'loss' | 'draw' | 'other' }[];
-  summary: { games: number; win: number; loss: number; draw: number };
-  missingMonths: number;
-} | null> {
+): Promise<GamesData & { missingMonths: number }> {
   const json = await getJson(
     `/api/games?username=${encodeURIComponent(username)}&timeClass=${encodeURIComponent(
       timeClass
@@ -113,13 +109,8 @@ export async function fetchGames(
   );
 
   return {
-    points: Array.isArray(json?.points)
-      ? json.points.map((p: { date?: string; rating?: number; result?: string }) => ({
-          date: String(p?.date ?? ''),
-          rating: Number(p?.rating ?? 0),
-          result: (p?.result ?? 'other') as 'win' | 'loss' | 'draw' | 'other',
-        }))
-      : [],
+    // Already validated and shaped server-side by toGameRecord().
+    points: Array.isArray(json?.points) ? json.points : [],
     summary: json?.summary ?? { games: 0, win: 0, loss: 0, draw: 0 },
     missingMonths: Number(json?.missingMonths ?? 0),
   };

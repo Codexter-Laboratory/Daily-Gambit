@@ -35,7 +35,10 @@ npx prisma studio       # browse and edit the database in your browser
 
 1. Import the repository at [vercel.com/new](https://vercel.com/new). The framework preset is detected as Next.js; leave the defaults.
 2. In the project's **Storage** tab, add a **Neon** Postgres database and connect it to the project. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for you.
-3. Redeploy. The `vercel-build` script runs `prisma migrate deploy` before `next build`, so the tables are created on the first deploy.
+3. In **Settings → Environment Variables**, add `CRON_SECRET` with any long random string (for example the output of `openssl rand -hex 32`). Vercel sends it with each cron request, and the snapshot endpoint rejects requests without it.
+4. Redeploy. The `vercel-build` script runs `prisma migrate deploy` before `next build`, so the tables are created on the first deploy.
+
+`vercel.json` schedules `/api/cron/snapshots` once a day at about 23:30 UTC. It saves a Puzzle Rush snapshot for every player looked up in the last 90 days (up to 200), so their history keeps growing on days nobody opens their page.
 
 ## How to use it
 
@@ -45,11 +48,20 @@ The page URL updates to `?u=<username>`, so you can share a link straight to a p
 
 Once a player is loaded, the button changes to **Refresh**, which fetches the latest data for that player again.
 
-## How the streak works
+The **Games** section has one filter row (category and period, up to 3 years) that drives every chart below it, all built from the player's monthly game archives:
 
-Chess.com only gives you running totals for Puzzle Rush, not a day-by-day history, so Daily Gambit builds that history itself. Each time you look a player up, it saves a snapshot of your attempt count for that day. A day counts toward the streak if the count went up compared to the previous saved day.
+- **Rating history**: rating after every game.
+- **Activity**: games per day as a calendar heatmap.
+- **Results by colour**: wins, draws and losses as White and as Black.
+- **Score by opponent strength**: score against weaker and stronger opponents, next to the score the rating gap predicts.
+- **How games end**: checkmate, resignation, time and so on, for wins, losses and draws.
+- **Top openings**: most played openings as White and as Black, with results.
 
-The catch is that a day only gets recorded if you load your stats on it. If you puzzle on Tuesday but don't open Daily Gambit until Thursday, Tuesday won't show up, so get in the habit of loading your stats on the days you play.
+## Puzzle Rush history and the streak
+
+Chess.com's API has no Puzzle Rush history: it returns the best run and, for some players, running daily totals. So Daily Gambit records the history itself, one snapshot per player per day, saved when someone looks the player up and by the daily cron job. Past days from before a player was first looked up can't be recovered.
+
+The best score is saved every day, which is what the "Best score over time" chart is built from. A day counts toward the streak if the attempt count went up compared to the previous saved day; that needs the daily totals, which Chess.com doesn't return for every player.
 
 ## Disclaimer
 

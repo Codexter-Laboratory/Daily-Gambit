@@ -22,6 +22,7 @@ export async function GET(req: Request) {
         asOf: true,
         attemptsTotal: true,
         scoreTotal: true,
+        bestScore: true,
       },
     });
 
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       date: isoDateUTC(s.asOf),
       attemptsTotal: s.attemptsTotal,
       scoreTotal: s.scoreTotal,
+      bestScore: s.bestScore,
       attemptsDelta: null,
       scoreDelta: null,
     }));

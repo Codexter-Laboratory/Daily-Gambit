@@ -1,4 +1,5 @@
 import { extractPuzzleRush } from './puzzleRush';
+import { toGameRecord, type ArchiveGame, type GameRecord } from './gameRecords';
 
 // Chess.com asks API clients to identify themselves with a User-Agent.
 const CHESSCOM_HEADERS = {
@@ -28,6 +29,8 @@ async function chessComError(res: Response, username: string): Promise<ChessComA
 export type PuzzleRushDailyStats = {
   attemptsTotal: number | null;
   scoreTotal: number | null;
+  /** Best single run. Chess.com returns this even when the daily block is missing. */
+  bestScore: number | null;
 };
 
 export type ChessComStatsResponse = Record<string, unknown>;
@@ -174,6 +177,7 @@ export async function fetchPuzzleRushDailyStats(
   return {
     attemptsTotal: rush.dailyAttempts,
     scoreTotal: rush.dailyScore,
+    bestScore: rush.bestScore,
   };
 }
 
@@ -349,55 +353,10 @@ export type GameTimeClass =
   | 'threecheck'
   | 'atomic';
 
-export type RatingPoint = {
-  endTime: number; // unix seconds
-  date: string; // YYYY-MM-DD
-  rating: number;
-  result: 'win' | 'loss' | 'draw' | 'other';
-  color: 'white' | 'black';
-  timeClass: string;
-};
+/** One game from the player's side; the charts are all built from these. */
+export type RatingPoint = GameRecord;
 
 type ArchiveIndex = { archives?: string[] };
-
-type ArchiveGame = {
-  end_time?: number;
-  time_class?: string;
-  rules?: string;
-  rated?: boolean;
-  white?: { username?: string; rating?: number; result?: string };
-  black?: { username?: string; rating?: number; result?: string };
-};
-
-function isoDateUTCFromUnixSeconds(sec: number): string {
-  return new Date(sec * 1000).toISOString().slice(0, 10);
-}
-
-function normalizeResultForPlayer(playerResult?: string): RatingPoint['result'] {
-  // Chess.com uses: win, checkmated, resigned, timeout, stalemate, agreed, repetition, insufficient, 50move, abandoned, etc.
-  if (!playerResult) return 'other';
-  if (playerResult === 'win') return 'win';
-  if (
-    playerResult === 'agreed' ||
-    playerResult === 'repetition' ||
-    playerResult === 'stalemate' ||
-    playerResult === 'insufficient' ||
-    playerResult === '50move' ||
-    playerResult === 'timevsinsufficient'
-  ) {
-    return 'draw';
-  }
-  return 'loss';
-}
-
-function pickPlayerSide(game: ArchiveGame, username: string) {
-  const u = username.toLowerCase();
-  const w = game.white?.username?.toLowerCase();
-  const b = game.black?.username?.toLowerCase();
-  if (w === u) return { color: 'white' as const, side: game.white };
-  if (b === u) return { color: 'black' as const, side: game.black };
-  return null;
-}
 
 const ARCHIVE_CONCURRENCY = 4;
 const STANDARD_TIME_CLASSES = new Set(['bullet', 'blitz', 'rapid', 'daily']);
@@ -503,26 +462,13 @@ export async function fetchRatingSeriesFromArchives(params: {
 
   for (const g of allGames) {
     if (!matchesCategory(g, timeClass)) continue;
-    if (typeof g.end_time !== 'number') continue;
+    const record = toGameRecord(g, username, timeClass);
+    if (!record) continue;
 
-    const player = pickPlayerSide(g, username);
-    if (!player) continue;
-    const rating = player.side?.rating;
-    if (typeof rating !== 'number') continue;
-
-    const result = normalizeResultForPlayer(player.side?.result);
-    if (result === 'win') win += 1;
-    else if (result === 'loss') loss += 1;
-    else if (result === 'draw') draw += 1;
-
-    points.push({
-      endTime: g.end_time,
-      date: isoDateUTCFromUnixSeconds(g.end_time),
-      rating,
-      result,
-      color: player.color,
-      timeClass: g.time_class ?? timeClass,
-    });
+    if (record.result === 'win') win += 1;
+    else if (record.result === 'loss') loss += 1;
+    else if (record.result === 'draw') draw += 1;
+    points.push(record);
   }
 
   points.sort((a, b) => a.endTime - b.endTime);

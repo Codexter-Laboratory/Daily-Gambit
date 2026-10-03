@@ -15,6 +15,8 @@ import { ClubsSection } from './ClubsSection';
 import { TournamentsSection } from './TournamentsSection';
 import { TeamMatchesSection } from './TeamMatchesSection';
 import { SnapshotsTable } from './SnapshotsTable';
+import { GamesFilters } from './GamesFilters';
+import { ActivityHeatmap, GameEndings, OpponentStrength, ResultsByColor, TopOpenings } from './GameInsights';
 
 export function PlayerDashboard() {
   const mounted = useMounted();
@@ -47,7 +49,6 @@ export function PlayerDashboard() {
     setMonths,
     games,
     statsSummary,
-    attemptsChart,
     puzzleRushSummary,
     ratingChart,
     loadGames,
@@ -87,8 +88,11 @@ export function PlayerDashboard() {
   }
 
   const handleGamesFilterChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
+    setTimeClass(nextTimeClass);
+    setMonths(nextMonths);
     if (activeUsername) loadGames(activeUsername, nextTimeClass, nextMonths);
   };
+  const gamePoints = games?.points ?? null;
 
   const search = (
     <UsernameSearch
@@ -122,27 +126,44 @@ export function PlayerDashboard() {
         statsSummary={statsSummary}
       />
 
-      <div className="grid2">
+      <section className="stack" aria-label="Games">
+        <GamesFilters timeClass={timeClass} months={months} onChange={handleGamesFilterChange} />
+
         <GamesRatingChart
           timeClass={timeClass}
-          setTimeClass={setTimeClass}
           months={months}
-          setMonths={setMonths}
           ratingChart={ratingChart}
           gamesSummary={games?.summary ?? null}
           missingMonths={games?.missingMonths ?? 0}
           loading={gamesLoading}
-          onCategoryChange={handleGamesFilterChange}
-          onLookbackChange={handleGamesFilterChange}
         />
 
-        <PuzzleRushChart
-          puzzleRushSummary={puzzleRushSummary}
-          attemptsChart={attemptsChart}
-          data={data}
-          loading={statsLoading || dashboardLoading}
-        />
-      </div>
+        <ActivityHeatmap points={gamePoints} loading={gamesLoading} months={months} />
+
+        <div className="grid2">
+          <ResultsByColor points={gamePoints} loading={gamesLoading} />
+          <OpponentStrength points={gamePoints} loading={gamesLoading} />
+        </div>
+
+        <div className="grid2">
+          <GameEndings points={gamePoints} loading={gamesLoading} />
+          <TopOpenings points={gamePoints} loading={gamesLoading} />
+        </div>
+      </section>
+
+      <section className="stack" aria-label="Puzzle Rush">
+        <div className="sectionHead">
+          <h2 className="sectionTitle">Puzzle Rush</h2>
+        </div>
+        <div className="grid2">
+          <PuzzleRushChart
+            puzzleRushSummary={puzzleRushSummary}
+            data={data}
+            loading={statsLoading || dashboardLoading}
+          />
+          <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
+        </div>
+      </section>
 
       <ToMoveGamesSection
         toMoveGamesLoading={toMoveGamesLoading}
@@ -177,7 +198,6 @@ export function PlayerDashboard() {
         />
       </div>
 
-      <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
     </div>
   );
 }

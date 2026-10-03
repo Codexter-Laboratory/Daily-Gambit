@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import type { DashboardResponse, GamesTimeClass } from './types';
 import * as services from './services';
 import {
-  computeAttemptsChart,
   computePuzzleRushSummary,
   computeRatingChart,
   computeStatsSummary,
@@ -198,10 +197,6 @@ export function usePlayerDashboard() {
   );
 
   const statsSummary = useMemo(() => computeStatsSummary(stats), [stats]);
-  const attemptsChart = useMemo(
-    () => computeAttemptsChart(data, stats, statsSummary),
-    [data, stats, statsSummary]
-  );
   const puzzleRushSummary = useMemo(() => computePuzzleRushSummary(statsSummary), [statsSummary]);
   const ratingChart = useMemo(() => computeRatingChart(games), [games]);
 
@@ -236,7 +231,6 @@ export function usePlayerDashboard() {
     games,
     gamesLoading,
     statsSummary,
-    attemptsChart,
     puzzleRushSummary,
     ratingChart,
     loadGames,

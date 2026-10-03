@@ -1,6 +1,7 @@
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -9,13 +10,11 @@ import {
   YAxis,
 } from 'recharts';
 import { Panel } from '../../components';
-import type { AttemptsChartPoint } from './derived';
 import type { PuzzleRushSummary } from './derived';
 import type { DashboardResponse } from './types';
 
 type PuzzleRushChartProps = {
   puzzleRushSummary: PuzzleRushSummary | null;
-  attemptsChart: AttemptsChartPoint[];
   data: DashboardResponse | null;
   loading: boolean;
 };
@@ -26,29 +25,31 @@ const CHART_TOOLTIP_STYLE = {
   borderRadius: 12,
 };
 
-function tooltipFormatter(value: unknown, name: string | undefined): [string, string] {
-  const nameStr = String(name ?? '');
-  const displayValue = String(value ?? '-');
-  if (nameStr === 'attemptsDelta') return [displayValue, 'Daily Attempts'];
-  if (nameStr === 'scoreDelta') return [displayValue, 'Daily Score'];
-  if (nameStr === 'totalAttempts') return [displayValue, 'Total Attempts'];
-  if (nameStr === 'totalScore') return [displayValue, 'Total Score'];
-  return [displayValue, nameStr || 'Unknown'];
-}
-
-const METRICS: { key: keyof PuzzleRushSummary; label: string; color: string; suffix?: string }[] = [
-  { key: 'dailyAttempts', label: 'Daily attempts', color: 'var(--accent)' },
-  { key: 'dailyScore', label: 'Daily score', color: 'var(--good)' },
-  { key: 'bestScore', label: 'Best score', color: 'var(--warn)' },
-  { key: 'avgScorePerAttempt', label: 'Avg score / attempt', color: 'var(--violet)' },
+const METRICS: { key: keyof PuzzleRushSummary; label: string }[] = [
+  { key: 'bestScore', label: 'Best score' },
+  { key: 'dailyAttempts', label: 'Daily attempts' },
+  { key: 'dailyScore', label: 'Daily score' },
+  { key: 'avgScorePerAttempt', label: 'Avg score / attempt' },
 ];
 
 const AXIS_TICK = { fill: 'rgba(255,255,255,0.6)', fontSize: 11 };
 
-export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loading }: PuzzleRushChartProps) {
-  const days = data?.puzzleRush?.points?.length ?? 0;
-  // The line chart plots day-over-day change, which needs at least two saved days.
-  const hasDeltas = attemptsChart.some((p) => p.attemptsDelta !== null || p.scoreDelta !== null);
+function formatDate(iso: string) {
+  return new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export function PuzzleRushChart({ puzzleRushSummary, data, loading }: PuzzleRushChartProps) {
+  const points = data?.puzzleRush?.points ?? [];
+  const bestSeries = points.filter((p) => p.bestScore != null).map((p) => ({ date: p.date, best: p.bestScore }));
+  const attemptsSeries = points
+    .filter((p) => p.attemptsDelta != null)
+    .map((p) => ({ date: p.date, attempts: p.attemptsDelta }));
+  const firstDay = points[0]?.date ?? null;
 
   if (!puzzleRushSummary && loading) {
     return (
@@ -68,7 +69,7 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
     puzzleRushSummary != null &&
     (puzzleRushSummary.dailyAttempts != null ||
       puzzleRushSummary.bestScore != null ||
-      (data?.puzzleRush?.points ?? []).some((p) => p.attemptsTotal != null));
+      points.some((p) => p.attemptsTotal != null || p.bestScore != null));
 
   if (!hasPuzzleRush) {
     return (
@@ -89,64 +90,75 @@ export function PuzzleRushChart({ puzzleRushSummary, attemptsChart, data, loadin
           const value = puzzleRushSummary?.[m.key];
           return (
             <div key={m.key} className="metricTile">
-              <div className="metricValue" style={{ color: m.color }}>
-                {value != null ? `${value}${m.suffix ?? ''}` : '–'}
-              </div>
+              <div className="metricValue">{value != null ? value : '–'}</div>
               <div className="metricLabel">{m.label}</div>
             </div>
           );
         })}
       </div>
 
-      {!hasDeltas ? (
-        <div className="chartEmpty">
-          The daily chart appears once two different days are saved. Look this player up again
-          tomorrow.
+      {bestSeries.length >= 2 ? (
+        <figure className="miniChart">
+          <figcaption>Best score over time</figcaption>
+          <div className="chartBox" style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bestSeries} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
+                <YAxis
+                  tick={AXIS_TICK}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                  domain={['dataMin - 2', 'dataMax + 2']}
+                />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: unknown) => [String(v ?? '–'), 'Best score']} />
+                <Line
+                  type="stepAfter"
+                  dataKey="best"
+                  stroke="var(--series-1)"
+                  strokeWidth={2}
+                  dot={bestSeries.length <= 30 ? { r: 4, strokeWidth: 2, stroke: 'var(--chart-surface)', fill: 'var(--series-1)' } : false}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </figure>
+      ) : null}
+
+      {attemptsSeries.length >= 1 ? (
+        <figure className="miniChart">
+          <figcaption>Attempts per day</figcaption>
+          <div className="chartBox" style={{ height: 150 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={attemptsSeries} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
+                <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP_STYLE}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  formatter={(v: unknown) => [String(v ?? '–'), 'Attempts']}
+                />
+                <Bar dataKey="attempts" fill="var(--series-1)" maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </figure>
+      ) : null}
+
+      {bestSeries.length < 2 && attemptsSeries.length === 0 ? (
+        <div className="chartEmpty chartEmptyShort">
+          Chess.com doesn&apos;t publish past Puzzle Rush results, so Daily Gambit records them itself, one
+          snapshot a day. The charts appear once two days are recorded.
         </div>
-      ) : (
-      <div className="chartBox" style={{ height: 260 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={attemptsChart} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-            <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
-            <YAxis yAxisId="attempts" tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
-            <YAxis yAxisId="score" orientation="right" tick={AXIS_TICK} tickLine={false} axisLine={false} />
-            <Tooltip
-              contentStyle={CHART_TOOLTIP_STYLE}
-              formatter={(value: unknown, name: unknown) =>
-                tooltipFormatter(value, typeof name === 'string' ? name : undefined)
-              }
-            />
-            <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" />
-            <Line
-              yAxisId="attempts"
-              type="monotone"
-              dataKey="attemptsDelta"
-              stroke="#60a5fa"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              name="Daily Attempts"
-            />
-            <Line
-              yAxisId="score"
-              type="monotone"
-              dataKey="scoreDelta"
-              stroke="#34d399"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              name="Daily Score"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      )}
+      ) : null}
 
       <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-        {days > 1
-            ? `${days} days of saved snapshots. A new one is saved each day you look this player up.`
-            : 'Only today is saved so far. The chart fills in as you look this player up on more days.'}
+        {firstDay
+          ? `${points.length} day${points.length === 1 ? '' : 's'} recorded since ${formatDate(firstDay)}. New days are saved automatically.`
+          : 'Nothing recorded yet. The first snapshot is saved the next time this player is looked up.'}
       </div>
     </Panel>
   );
