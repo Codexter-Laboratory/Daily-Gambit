@@ -7,6 +7,7 @@ import {
   computeStatsSummary,
 } from './derived';
 import { toFriendlyErrorMessage } from '../../utils/errorMessage';
+import { INVALID_USERNAME_MESSAGE, USERNAME_RE, normalizeUsername } from '../../lib/username';
 
 export function usePlayerDashboard() {
   const [username, setUsername] = useState('');
@@ -113,8 +114,13 @@ export function usePlayerDashboard() {
 
   const refreshAll = useCallback(
     async (nextUsername: string, options?: { withIngest?: boolean }) => {
-      const clean = nextUsername.replace(/\s+/g, '').trim().toLowerCase();
+      const clean = normalizeUsername(nextUsername);
       if (!clean) return;
+      // Say what is wrong with the name instead of sending it to the API and reporting "not found".
+      if (!USERNAME_RE.test(clean)) {
+        setError(INVALID_USERNAME_MESSAGE);
+        return;
+      }
 
       const gen = ++generation.current;
       gamesRequest.current++;
@@ -236,5 +242,6 @@ export function usePlayerDashboard() {
     loadGames,
     refreshAll,
     clearPlayer,
+    setError,
   };
 }

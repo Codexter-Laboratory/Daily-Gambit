@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ChessComApiError } from './chesscom';
-
-const USERNAME_RE = /^[a-zA-Z0-9_]{1,64}$/;
+import { USERNAME_RE } from './username';
 
 /**
  * Reads ?username= and returns it lowercased, or null if missing or invalid.
