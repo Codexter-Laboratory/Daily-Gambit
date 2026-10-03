@@ -1,4 +1,5 @@
 import type { DashboardResponse, GamesData, GamesTimeClass } from './types';
+import { ingestSnapshot as ingestSnapshotAction, refreshPlayer } from './actions';
 
 /** An API call that returned an error status. Keeps the status so callers can tell 404 from 5xx. */
 export class ApiRequestError extends Error {
@@ -47,11 +48,6 @@ export async function fetchProfile(username: string): Promise<unknown | null> {
     'Failed to load profile.'
   );
   return json?.profile ?? null;
-}
-
-export async function fetchOnlineStatus(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/online-status?username=${encodeURIComponent(username)}`, 'Failed to load online status.');
-  return json?.onlineStatus ?? null;
 }
 
 export async function fetchClubs(username: string): Promise<unknown | null> {
@@ -116,6 +112,8 @@ export async function fetchGames(
   };
 }
 
-export async function fetchIngest(username: string): Promise<void> {
-  await fetch(`/api/ingest?username=${encodeURIComponent(username)}`);
+/** Saves today's snapshot with a Server Action (a POST), not a GET. forceFresh also expires the player's cached data. */
+export async function ingestSnapshot(username: string, options?: { forceFresh?: boolean }): Promise<void> {
+  const result = options?.forceFresh ? await refreshPlayer(username) : await ingestSnapshotAction(username);
+  if (!result.ok) throw new Error(result.error);
 }

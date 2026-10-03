@@ -1,10 +1,15 @@
 import Link from 'next/link';
+import { Inter } from 'next/font/google';
 import './globals.css';
+
+// next/font downloads the font at build time and serves it from this site, so there is no request to Google
+// at runtime, and it generates a fallback font with matching metrics, so the text does not jump when it loads (CLS).
+const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-sans' });
 
 const REPO_URL = 'https://github.com/Codexter-Laboratory/Daily-Gambit';
 
 export const metadata = {
-  title: 'Daily Gambit · Chess stats dashboard',
+  title: { default: 'Daily Gambit · Chess stats dashboard', template: '%s · Daily Gambit' },
   description:
     'Ratings, Puzzle Rush streaks, live games, clubs and tournaments for any Chess.com player, in one dashboard.',
   icons: {
@@ -26,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <div className="appShell">
           <header className="appHeader">

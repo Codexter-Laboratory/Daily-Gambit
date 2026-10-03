@@ -18,3 +18,9 @@ export function normalizeUsername(input: string): string {
   if (fromLink) value = fromLink[1];
   return value.replace(/^@/, '').replace(/\s+/g, '').toLowerCase();
 }
+
+export const PLAYER_NOT_FOUND_MESSAGE =
+  "Couldn't find that Chess.com username. Please check the spelling and try again.";
+
+export const PLAYER_UNAVAILABLE_MESSAGE =
+  "Couldn't reach Chess.com right now. Please try again in a moment.";

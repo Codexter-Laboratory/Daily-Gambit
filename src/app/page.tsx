@@ -1,13 +1,12 @@
-'use client';
+import { Hero } from '../features/player-dashboard/Hero';
+import { PlayerSearch } from '../features/player-dashboard/PlayerSearch';
 
-import { Suspense } from 'react';
-import { PlayerDashboard } from '../features/player-dashboard';
-
+// Nothing on the landing page depends on the request, so Next renders it once at build
+// time and serves it as static HTML (SSG). Only the search box is a client component.
 export default function Page() {
-  // useSearchParams() inside the dashboard needs a Suspense boundary.
   return (
-    <Suspense>
-      <PlayerDashboard />
-    </Suspense>
+    <Hero>
+      <PlayerSearch />
+    </Hero>
   );
 }
