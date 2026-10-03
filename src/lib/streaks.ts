@@ -4,6 +4,7 @@ export type PuzzleRushPoint = {
   date: DateISO;
   attemptsTotal: number | null;
   scoreTotal: number | null;
+  bestScore: number | null;
   attemptsDelta: number | null;
   scoreDelta: number | null;
 };

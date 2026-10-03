@@ -16,7 +16,7 @@ export function SnapshotsTable({ points, loading }: SnapshotsTableProps) {
   return (
     <Panel title="Recent Puzzle Rush Snapshots" busy={loading}>
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        The 10 most recent daily snapshots. One is saved each day this player is looked up.
+        The 10 most recent daily snapshots. One is saved automatically each day.
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -25,6 +25,7 @@ export function SnapshotsTable({ points, loading }: SnapshotsTableProps) {
               <th style={{ padding: '6px 4px', textAlign: 'left' }}>Date</th>
               <th style={{ padding: '6px 4px', textAlign: 'left' }}>Attempts</th>
               <th style={{ padding: '6px 4px', textAlign: 'left' }}>Score</th>
+              <th style={{ padding: '6px 4px', textAlign: 'left' }}>Best</th>
             </tr>
           </thead>
           <tbody>
@@ -38,11 +39,14 @@ export function SnapshotsTable({ points, loading }: SnapshotsTableProps) {
                   <td style={{ padding: '6px 4px' }}>
                     {typeof p.scoreTotal === 'number' ? p.scoreTotal : '-'}
                   </td>
+                  <td style={{ padding: '6px 4px' }}>
+                    {typeof p.bestScore === 'number' ? p.bestScore : '-'}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={3} style={{ padding: '10px 6px', color: 'rgba(255,255,255,0.7)' }}>
+                <td colSpan={4} style={{ padding: '10px 6px', color: 'rgba(255,255,255,0.7)' }}>
                   No snapshots yet.
                 </td>
               </tr>

@@ -1,4 +1,3 @@
-import type { DashboardResponse, PuzzleRushPoint } from './types';
 import { extractPuzzleRush } from '../../lib/puzzleRush';
 
 export type StatsSummary = {
@@ -46,44 +45,6 @@ export function computeStatsSummary(stats: unknown): StatsSummary | null {
       rushBestScore: rush.bestScore,
     },
   };
-}
-
-export type AttemptsChartPoint = {
-  date: string;
-  attemptsDelta: number | null;
-  scoreDelta: number | null;
-  totalAttempts: number | null;
-  totalScore: number | null;
-};
-
-export function computeAttemptsChart(
-  data: DashboardResponse | null,
-  stats: unknown,
-  statsSummary: StatsSummary | null
-): AttemptsChartPoint[] {
-  const empty = [{ date: '', attemptsDelta: null, scoreDelta: null, totalAttempts: null, totalScore: null }];
-  if (!stats || !statsSummary) return empty;
-
-  if (data?.puzzleRush?.points?.length) {
-    return data.puzzleRush.points.map((p: PuzzleRushPoint) => ({
-      date: p.date,
-      attemptsDelta: typeof p.attemptsDelta === 'number' ? p.attemptsDelta : null,
-      scoreDelta: typeof p.scoreDelta === 'number' ? p.scoreDelta : null,
-      totalAttempts: typeof p.attemptsTotal === 'number' ? p.attemptsTotal : null,
-      totalScore: typeof p.scoreTotal === 'number' ? p.scoreTotal : null,
-    }));
-  }
-
-  // No saved history yet: show today's totals only. Do NOT pass them off as a daily change
-  // (the old code used the running total as the delta, which drew a bogus spike).
-  const today = new Date().toISOString().slice(0, 10);
-  return [{
-    date: today,
-    attemptsDelta: null,
-    scoreDelta: null,
-    totalAttempts: statsSummary.puzzles.rushDailyAttempts,
-    totalScore: statsSummary.puzzles.rushDailyScore,
-  }];
 }
 
 export type PuzzleRushSummary = {

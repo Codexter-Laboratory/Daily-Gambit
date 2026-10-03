@@ -15,6 +15,9 @@ model PuzzleRushSnapshot {
 
   attemptsTotal Int?
   scoreTotal    Int?
+  /// Best single Puzzle Rush run on this day. Chess.com has no history endpoint, so this
+  /// column is how the best-score chart is built up over time.
+  bestScore     Int?
 
   fetchedAt    DateTime @default(now())
 

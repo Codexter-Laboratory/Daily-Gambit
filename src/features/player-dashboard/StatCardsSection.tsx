@@ -30,8 +30,8 @@ export function StatCardsSection({ data, dashboardLoading, statsLoading, statsSu
               {c.games != null ? (
                 <>
                   {c.games.toLocaleString()} games ·{' '}
-                  <span style={{ color: 'var(--good)' }}>{c.win}W</span>{' '}
-                  <span style={{ color: 'var(--bad)' }}>{c.loss}L</span>{' '}
+                  <span>{c.win}W</span>{' '}
+                  <span>{c.loss}L</span>{' '}
                   <span>{c.draw}D</span>
                 </>
               ) : (
@@ -49,7 +49,7 @@ export function StatCardsSection({ data, dashboardLoading, statsLoading, statsSu
         <SkeletonCard label="🔥 Puzzle Rush streak" />
       ) : (
         <StatCard label="🔥 Puzzle Rush streak" value={`${streak?.current ?? 0}d`}>
-          Best: {streak?.best ?? 0} days
+          Best: {streak?.best ?? 0} {streak?.best === 1 ? 'day' : 'days'}
           {streak?.endingDate ? <> · Last: {streak.endingDate}</> : null}
         </StatCard>
       )}
