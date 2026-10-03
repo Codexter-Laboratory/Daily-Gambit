@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMounted } from '../../hooks/useMounted';
 import { Panel } from '../../components';
 import { usePlayerDashboard } from './hooks';
+import { INVALID_USERNAME_MESSAGE, USERNAME_RE, normalizeUsername } from '../../lib/username';
 import { Hero } from './Hero';
 import { UsernameSearch } from './UsernameSearch';
 import { StatCardsSection } from './StatCardsSection';
@@ -54,11 +55,12 @@ export function PlayerDashboard() {
     loadGames,
     refreshAll,
     clearPlayer,
+    setError,
   } = usePlayerDashboard();
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const urlUsername = searchParams.get('u')?.replace(/\s+/g, '').toLowerCase() || null;
+  const urlUsername = normalizeUsername(searchParams.get('u') ?? '') || null;
 
   // The ?u= param is the source of truth for which player is shown, so links can be
   // shared and Back/Forward move between players (or back to the landing page).
@@ -74,8 +76,12 @@ export function PlayerDashboard() {
   }, [urlUsername, setUsername, clearPlayer]);
 
   const showPlayer = (name: string) => {
-    const clean = name.replace(/\s+/g, '').toLowerCase();
+    const clean = normalizeUsername(name);
     if (!clean) return;
+    if (!USERNAME_RE.test(clean)) {
+      setError(INVALID_USERNAME_MESSAGE);
+      return;
+    }
     if (clean === urlUsername) {
       refreshAll(clean, { withIngest: true });
     } else {

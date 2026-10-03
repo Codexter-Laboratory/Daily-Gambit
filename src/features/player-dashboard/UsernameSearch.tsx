@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react';
+import { normalizeUsername } from '../../lib/username';
 
 const EXAMPLE_PLAYERS = ['hikaru', 'magnuscarlsen', 'gothamchess', 'danielnaroditsky'];
 
@@ -19,7 +20,7 @@ export function UsernameSearch({
   activeUsername,
   error,
 }: UsernameSearchProps) {
-  const cleanUsername = username.replace(/\s+/g, '').toLowerCase();
+  const cleanUsername = normalizeUsername(username);
   const hasUsername = cleanUsername.length > 0;
   // Typing the player that's already on screen turns the button into a refresh.
   const isRefresh = activeUsername !== null && cleanUsername === activeUsername;
