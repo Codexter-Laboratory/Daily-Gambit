@@ -1,15 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useMounted } from '../../hooks/useMounted';
-import { Panel } from '../../components';
+'use client';
+
+import { useEffect, useRef, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import { LoadingState } from '../../components';
 import { usePlayerDashboard } from './hooks';
-import { INVALID_USERNAME_MESSAGE, USERNAME_RE, normalizeUsername } from '../../lib/username';
-import { Hero } from './Hero';
+import { usePlayerSearch } from './usePlayerSearch';
 import { UsernameSearch } from './UsernameSearch';
 import { StatCardsSection } from './StatCardsSection';
-import { PlayerProfileSection } from './PlayerProfileSection';
-import { PuzzleRushChart } from './PuzzleRushChart';
-import { GamesRatingChart } from './GamesRatingChart';
 import { CurrentGamesTable } from './CurrentGamesTable';
 import { ToMoveGamesSection } from './ToMoveGamesSection';
 import { ClubsSection } from './ClubsSection';
@@ -19,21 +16,34 @@ import { SnapshotsTable } from './SnapshotsTable';
 import { GamesFilters } from './GamesFilters';
 import { ActivityHeatmap, GameEndings, OpponentStrength, ResultsByColor, TopOpenings } from './GameInsights';
 
-export function PlayerDashboard() {
-  const mounted = useMounted();
+// The two charts use Recharts, the heaviest dependency. next/dynamic keeps Recharts out of the
+// first bundle: the page paints first and the charts arrive in one lazy chunk (both import from
+// ./Charts). ssr: false because charts need the browser to measure their size, so the server
+// sends the skeleton and the client swaps the chart in.
+const GamesRatingChart = dynamic(() => import('./Charts').then((m) => m.GamesRatingChart), {
+  ssr: false,
+  loading: () => <LoadingState title="Rating history" message="Loading chart…" rows={5} />,
+});
+const PuzzleRushChart = dynamic(() => import('./Charts').then((m) => m.PuzzleRushChart), {
+  ssr: false,
+  loading: () => <LoadingState title="Puzzle Rush" message="Loading chart…" rows={5} />,
+});
+
+type PlayerDashboardProps = {
+  /** The player this page is for (validated and lowercased by the page). */
+  username: string;
+  /** The profile card. A Server Component rendered by the page and passed down as a slot. */
+  profile: ReactNode;
+};
+
+export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
   const {
-    username,
-    setUsername,
-    activeUsername,
     error,
     data,
     dashboardLoading,
     statsLoading,
     gamesLoading,
     isRefreshing,
-    profile,
-    profileLoading,
-    onlineStatus,
     clubs,
     clubsLoading,
     tournaments,
@@ -54,94 +64,51 @@ export function PlayerDashboard() {
     ratingChart,
     loadGames,
     refreshAll,
-    clearPlayer,
-    setError,
-  } = usePlayerDashboard();
+  } = usePlayerDashboard(username);
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const urlUsername = normalizeUsername(searchParams.get('u') ?? '') || null;
-
-  // The ?u= param is the source of truth for which player is shown, so links can be
-  // shared and Back/Forward move between players (or back to the landing page).
+  // The page remounts this component for every player (key={username}), so this runs once per player.
   const refreshAllRef = useRef(refreshAll);
   refreshAllRef.current = refreshAll;
-  const activeUsernameRef = useRef(activeUsername);
-  activeUsernameRef.current = activeUsername;
   useEffect(() => {
-    if (urlUsername) {
-      // A search puts the name in the URL only after the player was found and is already loading, so there is nothing to start.
-      if (urlUsername === activeUsernameRef.current) return;
-      setUsername(urlUsername);
-      refreshAllRef.current(urlUsername, { withIngest: true });
-    } else {
-      clearPlayer();
-    }
-  }, [urlUsername, setUsername, clearPlayer]);
+    refreshAllRef.current(username, { withIngest: true });
+  }, [username]);
 
-  // True once the landing page has been on screen with nothing loading. A search typed there
-  // keeps the landing page up while the name is checked. A shared link opened directly has no
-  // landing page on screen yet, so it shows the loading panel instead of flashing the landing page.
-  const landingShown = useRef(false);
-  useEffect(() => {
-    if (mounted && !activeUsername && !isRefreshing) landingShown.current = true;
-  }, [mounted, activeUsername, isRefreshing]);
-
-  const showPlayer = (name: string) => {
-    const clean = normalizeUsername(name);
-    if (!clean) return;
-    if (!USERNAME_RE.test(clean)) {
-      setError(INVALID_USERNAME_MESSAGE);
-      return;
-    }
-    if (clean === urlUsername) {
-      refreshAll(clean, { withIngest: true });
-    } else {
-      // The URL changes only once the player is found: a misspelled name leaves the address bar alone.
-      refreshAll(clean, {
-        withIngest: true,
-        onVerified: () => router.push(`/?u=${encodeURIComponent(clean)}`, { scroll: false }),
-      });
-    }
-  };
-
-  if (!mounted) {
-    return <Panel>Loading…</Panel>;
-  }
+  // Searching for the player already on screen is the Refresh button. Any other name is checked
+  // first and only then opened (see usePlayerSearch).
+  const {
+    username: searchText,
+    setUsername: setSearchText,
+    error: searchError,
+    isBusy,
+    search: showPlayer,
+  } = usePlayerSearch({
+    currentUsername: username,
+    onRefresh: (name) => refreshAll(name, { withIngest: true, forceFresh: true }),
+  });
 
   const handleGamesFilterChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
     setTimeClass(nextTimeClass);
     setMonths(nextMonths);
-    if (activeUsername) loadGames(activeUsername, nextTimeClass, nextMonths);
+    loadGames(username, nextTimeClass, nextMonths);
   };
   const gamePoints = games?.points ?? null;
 
   const search = (
     <UsernameSearch
-      username={username}
-      onUsernameChange={setUsername}
+      username={searchText}
+      onUsernameChange={setSearchText}
       onSearch={showPlayer}
-      isLoading={isRefreshing}
-      activeUsername={activeUsername}
-      error={error}
-      typeToFocus={!activeUsername}
+      isLoading={isRefreshing || isBusy}
+      activeUsername={username}
+      error={searchError ?? error}
     />
   );
-
-  if (!activeUsername) {
-    if (isRefreshing && !landingShown.current) return <Panel>Loading…</Panel>;
-    return <Hero>{search}</Hero>;
-  }
 
   return (
     <div className="stack dashboardPage">
       {search}
 
-      <PlayerProfileSection
-        profileLoading={profileLoading}
-        profile={profile as { avatar?: string; username: string; name?: string; title?: string; player_id: string; location?: string; joined: number; followers: number; status: string; fide?: number; is_streamer?: boolean; twitch_url?: string; last_online: number; url?: string } | null}
-        onlineStatus={onlineStatus as { online: boolean } | null}
-      />
+      {profile}
 
       <StatCardsSection
         data={data}
@@ -198,7 +165,7 @@ export function PlayerDashboard() {
       <CurrentGamesTable
         currentGamesLoading={currentGamesLoading}
         currentGames={currentGames}
-        username={activeUsername}
+        username={username}
         hasUsername
       />
 

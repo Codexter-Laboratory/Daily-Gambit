@@ -7,6 +7,12 @@ const CHESSCOM_HEADERS = {
   'User-Agent': 'DailyGambit/1.0 (+https://github.com/Codexter-Laboratory/Daily-Gambit)',
 };
 
+/**
+ * Cache tag shared by every Chess.com fetch for one player. A Server Action can drop all of
+ * that player's cached responses at once with updateTag(playerTag(username)).
+ */
+export const playerTag = (username: string) => `player:${username.toLowerCase()}`;
+
 /** An error from Chess.com that keeps the HTTP status, so routes can answer 404 vs 502 correctly. */
 export class ChessComApiError extends Error {
   constructor(
@@ -193,7 +199,7 @@ export async function fetchPlayerProfile(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 300 }, // Cache for 5 minutes
+    next: { revalidate: 300, tags: [playerTag(username)] }, // Cache for 5 minutes
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -213,7 +219,7 @@ export async function fetchPlayerOnlineStatus(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 60 }, // Cache for 1 minute
+    next: { revalidate: 60, tags: [playerTag(username)] }, // Cache for 1 minute
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -233,7 +239,7 @@ export async function fetchPlayerClubs(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 300 }, // Cache for 5 minutes
+    next: { revalidate: 300, tags: [playerTag(username)] }, // Cache for 5 minutes
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -253,7 +259,7 @@ export async function fetchPlayerTournaments(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 300 }, // Cache for 5 minutes
+    next: { revalidate: 300, tags: [playerTag(username)] }, // Cache for 5 minutes
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -273,7 +279,7 @@ export async function fetchPlayerMatches(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 300 }, // Cache for 5 minutes
+    next: { revalidate: 300, tags: [playerTag(username)] }, // Cache for 5 minutes
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -293,7 +299,7 @@ export async function fetchCurrentGames(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 60 }, // Cache for 1 minute
+    next: { revalidate: 60, tags: [playerTag(username)] }, // Cache for 1 minute
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -313,7 +319,7 @@ export async function fetchToMoveGames(
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 60 }, // Cache for 1 minute
+    next: { revalidate: 60, tags: [playerTag(username)] }, // Cache for 1 minute
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -333,7 +339,7 @@ export async function fetchPlayerStats(
     headers: CHESSCOM_HEADERS,
     signal,
     // Keep it reasonably fresh but avoid hammering PubAPI.
-    next: { revalidate: 60 },
+    next: { revalidate: 60, tags: [playerTag(username)] },
   });
 
   if (!res.ok) throw await chessComError(res, username);
@@ -392,14 +398,14 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 }
 
 /** One monthly archive. Retries once on 429/5xx/network errors. null means it could not be loaded. */
-async function fetchArchive(url: string, signal?: AbortSignal): Promise<ArchiveGame[] | null> {
+async function fetchArchive(url: string, tag: string, signal?: AbortSignal): Promise<ArchiveGame[] | null> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetch(url, {
         method: 'GET',
         headers: CHESSCOM_HEADERS,
         signal,
-        next: { revalidate: 60 },
+        next: { revalidate: 60, tags: [tag] },
       });
       if (res.ok) {
         const json = (await res.json()) as { games?: ArchiveGame[] };
@@ -434,7 +440,7 @@ export async function fetchRatingSeriesFromArchives(params: {
     method: 'GET',
     headers: CHESSCOM_HEADERS,
     signal,
-    next: { revalidate: 60 },
+    next: { revalidate: 60, tags: [playerTag(username)] },
   });
   if (!indexRes.ok) throw await chessComError(indexRes, username);
   const index = (await indexRes.json()) as ArchiveIndex;
@@ -443,7 +449,7 @@ export async function fetchRatingSeriesFromArchives(params: {
 
   // A few archives at a time: much faster than one by one (24 months used to run in series and
   // could hit the serverless time limit), and still gentle on PubAPI.
-  const results = await mapLimit(recentArchives, ARCHIVE_CONCURRENCY, (url) => fetchArchive(url, signal));
+  const results = await mapLimit(recentArchives, ARCHIVE_CONCURRENCY, (url) => fetchArchive(url, playerTag(username), signal));
   const allGames: ArchiveGame[] = [];
   let missingMonths = 0;
   for (const games of results) {
