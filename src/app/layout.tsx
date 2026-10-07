@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 // next/font downloads the font at build time and serves it from this site, so there is no request to Google
@@ -62,6 +63,7 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   );
