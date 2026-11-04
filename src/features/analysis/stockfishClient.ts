@@ -83,3 +83,11 @@ export function createStockfish(): StockfishClient {
     },
   };
 }
+
+let shared: StockfishClient | null = null;
+
+/** One long-lived engine for short jobs (checking a puzzle answer). Created on first use. */
+export function getSharedStockfish(): StockfishClient {
+  if (!shared) shared = createStockfish();
+  return shared;
+}

@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const profile = result.profile;
   return {
     title: `${profile.name || profile.username} (@${profile.username})`,
-    description: `Ratings, Puzzle Rush streak, live games, clubs and tournaments for ${profile.username} on Chess.com.`,
+    description: `Engine analysis, opening leaks, error patterns and daily training from ${profile.username}'s Chess.com games.`,
   };
 }
 

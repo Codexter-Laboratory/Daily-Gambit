@@ -14,6 +14,7 @@ import { TournamentsSection } from './TournamentsSection';
 import { TeamMatchesSection } from './TeamMatchesSection';
 import { SnapshotsTable } from './SnapshotsTable';
 import { GamesFilters } from './GamesFilters';
+import { AnalysisHub } from '../analysis';
 import { ActivityHeatmap, GameEndings, OpponentStrength, ResultsByColor, TopOpenings } from './GameInsights';
 
 // The two charts use Recharts, the heaviest dependency. next/dynamic keeps Recharts out of the
@@ -110,12 +111,9 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
 
       {profile}
 
-      <StatCardsSection
-        data={data}
-        dashboardLoading={dashboardLoading}
-        statsLoading={statsLoading}
-        statsSummary={statsSummary}
-      />
+      <StatCardsSection statsLoading={statsLoading} statsSummary={statsSummary} />
+
+      <AnalysisHub username={username} />
 
       <section className="stack" aria-label="Games">
         <GamesFilters timeClass={timeClass} months={months} onChange={handleGamesFilterChange} />
@@ -142,52 +140,57 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
         </div>
       </section>
 
-      <section className="stack" aria-label="Puzzle Rush">
-        <div className="sectionHead">
-          <h2 className="sectionTitle">Puzzle Rush</h2>
-        </div>
+      <details className="moreDetails">
+        <summary className="moreSummary">More: Puzzle Rush, live games, clubs and tournaments</summary>
+        <div className="stack moreBody">
+        <section className="stack" aria-label="Puzzle Rush">
+          <div className="sectionHead">
+            <h2 className="sectionTitle">Puzzle Rush</h2>
+          </div>
+          <div className="grid2">
+            <PuzzleRushChart
+              puzzleRushSummary={puzzleRushSummary}
+              data={data}
+              loading={statsLoading || dashboardLoading}
+            />
+            <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
+          </div>
+        </section>
+
+        <ToMoveGamesSection
+          toMoveGamesLoading={toMoveGamesLoading}
+          toMoveGames={toMoveGames}
+          hasUsername
+        />
+
+        <CurrentGamesTable
+          currentGamesLoading={currentGamesLoading}
+          currentGames={currentGames}
+          username={username}
+          hasUsername
+        />
+
+        <ClubsSection
+          clubsLoading={clubsLoading}
+          clubs={clubs}
+          hasUsername
+        />
+
         <div className="grid2">
-          <PuzzleRushChart
-            puzzleRushSummary={puzzleRushSummary}
-            data={data}
-            loading={statsLoading || dashboardLoading}
+          <TournamentsSection
+            tournamentsLoading={tournamentsLoading}
+            tournaments={tournaments}
+            hasUsername
           />
-          <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
+
+          <TeamMatchesSection
+            matchesLoading={matchesLoading}
+            matches={matches}
+            hasUsername
+          />
         </div>
-      </section>
-
-      <ToMoveGamesSection
-        toMoveGamesLoading={toMoveGamesLoading}
-        toMoveGames={toMoveGames}
-        hasUsername
-      />
-
-      <CurrentGamesTable
-        currentGamesLoading={currentGamesLoading}
-        currentGames={currentGames}
-        username={username}
-        hasUsername
-      />
-
-      <ClubsSection
-        clubsLoading={clubsLoading}
-        clubs={clubs}
-        hasUsername
-      />
-
-      <div className="grid2">
-        <TournamentsSection
-          tournamentsLoading={tournamentsLoading}
-          tournaments={tournaments}
-          hasUsername
-        />
-
-        <TeamMatchesSection
-          matchesLoading={matchesLoading}
-          matches={matches}
-          hasUsername
-        />
-      </div>
+        </div>
+      </details>
 
     </div>
   );

@@ -1108,3 +1108,51 @@ rect.heatCell:hover {
     width: 48px;
   }
 }
+
+/* ---------- Engine analysis, openings, errors, training ---------- */
+.anRun { display: grid; gap: 12px; }
+.anRunText { margin: 0; font-size: 13px; line-height: 1.5; }
+.anRunRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+.anRunActive { display: grid; gap: 10px; }
+.anSelect { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.anSelect select {
+  background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 8px 10px; font: inherit;
+}
+.anProgress { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.anProgressBar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+.anNote { font-size: 12px; margin-bottom: 10px; }
+.anError { color: var(--bad); font-size: 13px; }
+.anInsights { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.5; }
+.anTableWrap { overflow-x: auto; }
+.anTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.anTable th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 8px 6px 0; white-space: nowrap; }
+.anTable td { padding: 8px 8px 8px 0; border-top: 1px solid var(--border); }
+.anDot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid var(--border-strong); }
+.anDotWhite { background: #f1f5f9; }
+.anDotBlack { background: #0b1220; }
+.anGood { color: var(--good); }
+.anBad { color: var(--bad); }
+.anBars { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.anBarLabel { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.anBarTrack { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.anBarFill { height: 100%; background: var(--bad); border-radius: 99px; min-width: 2px; }
+.anBarMeta { font-size: 12px; margin-top: 4px; }
+.anTrainHead { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; }
+.anStreak { color: var(--warn); font-weight: 600; }
+.anTrain { display: grid; gap: 18px; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); align-items: start; }
+.anBoard { width: 100%; max-width: 420px; }
+.anTrainSide { display: grid; gap: 12px; font-size: 13px; }
+.anPrompt { margin: 0; font-size: 16px; font-weight: 600; }
+.anVerdict { min-height: 22px; font-size: 14px; }
+@media (max-width: 760px) {
+  .anTrain { grid-template-columns: minmax(0, 1fr); }
+  .anBoard { max-width: none; }
+}
+
+/* "More" section at the bottom: Puzzle Rush, live games, clubs, tournaments */
+.moreDetails { border-top: 1px solid var(--border); padding-top: 8px; }
+.moreSummary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 10px 0; }
+.moreSummary:hover { color: var(--text); }
+.moreBody { margin-top: 12px; }
+.anTrainSide .anRunRow { justify-content: flex-start; }
