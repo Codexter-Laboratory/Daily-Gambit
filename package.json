@@ -11,8 +11,11 @@
     "dev": "npm run dev -w @daily-gambit/web",
     "dev:api": "npm run dev -w @daily-gambit/api",
     "build": "npm run build -w @daily-gambit/web",
-    "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "test": "npm run test -w @daily-gambit/core && npm run test:unit -w @daily-gambit/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:integration": "npm run test -w @daily-gambit/api",
+    "db:deploy": "npm run db:deploy -w @daily-gambit/api",
+    "services": "docker compose up -d"
   },
   "engines": {
     "node": ">=22"

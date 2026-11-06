@@ -1,8 +1,10 @@
 # How the analysis works
 
-Everything here lives in `src/lib/analysis` as plain TypeScript with no React or browser APIs, so it can be unit tested (and later reused on a server). The browser pieces are in `src/features/analysis`.
+Everything here lives in `packages/core` (`@daily-gambit/core`) as plain TypeScript with no React or browser APIs. The same code runs in the browser and in the API's worker, and is unit tested. The browser pieces are in `apps/web/src/features/analysis`; the server pieces are in `apps/api`.
 
 ## The pipeline
+
+With the analysis API, steps 1 to 3 run in the API's worker (`apps/api/src/queue/processor.ts`) and results are stored in Postgres; the rest of this page is the same in both modes. In browser mode:
 
 1. `/api/analysis-games` returns the player's most recent standard-chess games with their PGN (newest archive first, optional time-control filter, at most 100).
 2. The browser starts Stockfish 17.1 (lite, single thread) in a Web Worker and evaluates **every position** of each game at depth 12, one at a time (`analyzeGame`). The final position of a finished game is scored from the result, with no engine call.
@@ -59,7 +61,9 @@ A puzzle is one of your mistakes or blunders where you were not already lost (wi
 
 A move other than the engine's first choice is accepted when, after it, you keep your win chance to within 5 points (checked with a depth-10 evaluation).
 
-## Stored in the browser
+## Where results are stored
+
+With the API, in Postgres, one row per player and game, with an analysis version (`SCHEMA_VERSION`). In browser mode, in IndexedDB:
 
 | Key | Contents | Version |
 | --- | --- | --- |
@@ -72,4 +76,4 @@ When the stored shape changes the version is bumped and older entries are ignore
 
 - Depth 12 on a lite single-thread engine is fast but not as deep as a desktop Stockfish. Mistake counts are a good guide, not a verdict.
 - Standard chess only. Variants are skipped.
-- Results live in one browser. They do not follow you to another device until a backend stores them.
+- Training progress (solved and failed puzzles, the streak) is still stored in the browser, so it does not follow you to another device. Analysis results do when the API is used.

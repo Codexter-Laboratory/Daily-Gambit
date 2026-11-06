@@ -8,6 +8,24 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dg_api_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # The API integration tests use these. Redis database 1, so nothing else is touched.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dg_api_test
+      REDIS_URL: redis://localhost:6379/1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,9 +33,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run db:deploy -w @daily-gambit/api
       - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      - name: Unit tests (core and API config)
+        run: npm test
+      - name: API integration tests (real Postgres, Redis and Stockfish)
+        run: npm run test:integration
+      - name: Build the API
+        run: npm run build -w @daily-gambit/api
+      - name: Build the web app
+        run: npm run build
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/dailygambit
           DATABASE_URL_UNPOOLED: postgresql://user:password@localhost:5432/dailygambit

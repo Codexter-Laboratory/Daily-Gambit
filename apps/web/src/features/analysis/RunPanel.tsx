@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Panel } from '../../components';
+import { API_URL } from './apiClient';
 import { TIME_CLASSES, type TimeClassFilter } from './format';
 import type { AnalysisProgress, AnalysisStatus, RunOptions } from './usePlayerAnalysis';
 
@@ -30,8 +31,11 @@ export function RunPanel({ status, running, progress, error, analysedCount, cach
     <Panel title="Engine analysis" busy={running}>
       <div className="anRun">
         <p className="muted anRunText">
-          Stockfish reviews your games on this device, move by move: where you lose points, which mistakes repeat, how you use the clock.
-          Nothing is uploaded.{analysedCount > 0 ? ` ${analysedCount} games analysed so far.` : ''}
+          Stockfish reviews your games move by move: where you lose points, which mistakes repeat, how you use the clock.{' '}
+          {API_URL
+            ? 'It runs on our server and the results are saved for this player, so they are there on any device. Only public Chess.com games are used.'
+            : 'It runs on this device and nothing is uploaded.'}
+          {analysedCount > 0 ? ` ${analysedCount} games analysed so far.` : ''}
         </p>
 
         {running ? (
@@ -79,7 +83,7 @@ export function RunPanel({ status, running, progress, error, analysedCount, cach
           </div>
         )}
 
-        {status === 'done' && !running ? <div className="muted anNote">Up to date. Analysed games are kept on this device.</div> : null}
+        {status === 'done' && !running ? <div className="muted anNote">Up to date.{API_URL ? '' : ' Analysed games are kept on this device.'}</div> : null}
         {status === 'cancelled' ? <div className="muted anNote">Stopped. Finished games are kept.</div> : null}
         {error ? (
           <div className="anError" role="alert">

@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // The shared analysis package is plain TypeScript source, so Next compiles it with the app.
-  transpilePackages: ['@daily-gambit/core'],
+  transpilePackages: ['@daily-gambit/core', '@daily-gambit/contracts'],
   async headers() {
     return [
       {

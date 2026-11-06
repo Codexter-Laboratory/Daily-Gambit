@@ -30,7 +30,8 @@
     "tailwindcss": "^4.2.2",
     "zod": "^4.6.5",
     "zustand": "^5.0.12",
-    "@daily-gambit/core": "*"
+    "@daily-gambit/core": "*",
+    "@daily-gambit/contracts": "*"
   },
   "devDependencies": {
     "@types/node": "latest",

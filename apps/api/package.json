@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:unit": "vitest run test/config.test.ts"
   },
   "dependencies": {
     "@daily-gambit/contracts": "*",

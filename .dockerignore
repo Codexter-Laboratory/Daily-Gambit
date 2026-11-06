@@ -1,0 +1,10 @@
+**/node_modules
+**/.next
+**/dist
+.git
+.github
+apps/web/public/engine
+**/.env
+**/.env.*
+!**/.env.example
+docs
