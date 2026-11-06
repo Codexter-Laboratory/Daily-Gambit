@@ -22,6 +22,8 @@ export type GameEnding =
 export type ArchiveSide = { username?: string; rating?: number; result?: string };
 
 export type ArchiveGame = {
+  url?: string;
+  pgn?: string;
   end_time?: number;
   time_class?: string;
   rules?: string;

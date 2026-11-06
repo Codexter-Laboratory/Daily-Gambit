@@ -485,3 +485,75 @@ export async function fetchRatingSeriesFromArchives(params: {
     missingMonths,
   };
 }
+
+/** A finished standard-chess game with its PGN, ready for engine analysis. */
+export type AnalysisGame = {
+  /** Chess.com's game id, the last part of the game URL. */
+  id: string;
+  url: string;
+  pgn: string;
+  endTime: number;
+  timeClass: string;
+  rated: boolean;
+  color: 'white' | 'black';
+  result: GameRecord['result'];
+  ending: GameRecord['ending'];
+  opponentRating: number | null;
+};
+
+/**
+ * The player's most recent standard-chess games that have a PGN, newest first.
+ * Reads monthly archives from the newest backwards and stops once it has enough games.
+ */
+export async function fetchRecentAnalysisGames(params: {
+  username: string;
+  limit: number;
+  /** Only this time class (blitz, rapid, ...). Omit for all standard games. */
+  timeClass?: string;
+  signal?: AbortSignal;
+}): Promise<{ games: AnalysisGame[]; missingMonths: number }> {
+  const { username, limit, timeClass, signal } = params;
+  const indexRes = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(username)}/games/archives`, {
+    method: 'GET',
+    headers: CHESSCOM_HEADERS,
+    signal,
+    next: { revalidate: 60, tags: [playerTag(username)] },
+  });
+  if (!indexRes.ok) throw await chessComError(indexRes, username);
+  const index = (await indexRes.json()) as ArchiveIndex;
+  const archives = Array.isArray(index.archives) ? [...index.archives].reverse() : [];
+
+  const games: AnalysisGame[] = [];
+  let missingMonths = 0;
+  for (const url of archives) {
+    if (games.length >= limit) break;
+    const month = await fetchArchive(url, playerTag(username), signal);
+    if (month === null) {
+      missingMonths += 1;
+      continue;
+    }
+    for (const g of [...month].sort((a, b) => (b.end_time ?? 0) - (a.end_time ?? 0))) {
+      if ((g.rules ?? 'chess') !== 'chess' || !g.pgn || !g.url) continue;
+      const record = toGameRecord(g, username, g.time_class ?? 'unknown');
+      if (!record || record.result === 'other') continue;
+      if (timeClass && record.timeClass !== timeClass) continue;
+      games.push({
+        id: g.url.split('/').pop() ?? g.url,
+        url: g.url,
+        pgn: g.pgn,
+        endTime: record.endTime,
+        timeClass: record.timeClass,
+        rated: g.rated ?? false,
+        color: record.color,
+        result: record.result,
+        ending: record.ending,
+        opponentRating: record.opponentRating,
+      });
+      if (games.length >= limit) break;
+    }
+  }
+  if (games.length === 0 && archives.length > 0 && missingMonths === archives.length) {
+    throw new ChessComApiError(502, `Chess.com PubAPI error (502) for ${username}: no game archive could be loaded`);
+  }
+  return { games, missingMonths };
+}

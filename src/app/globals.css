@@ -403,13 +403,14 @@ select option {
 }
 
 .btnPrimary {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  /* #2563eb with white text is 5.2:1, which passes WCAG AA. The lighter accent blue did not. */
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .btnGhost {
@@ -1107,4 +1108,135 @@ rect.heatCell:hover {
   .openingTable .num {
     width: 48px;
   }
+}
+
+/* ---------- Engine analysis, openings, errors, training ---------- */
+.anRun { display: grid; gap: 12px; }
+.anRunText { margin: 0; font-size: 13px; line-height: 1.5; }
+.anRunRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+.anRunActive { display: grid; gap: 10px; }
+.anSelect { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.anSelect select {
+  background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 8px 10px; font: inherit;
+}
+.anProgress { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.anProgressBar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+.anNote { font-size: 12px; margin-bottom: 10px; }
+.anError { color: var(--bad); font-size: 13px; }
+.anInsights { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.5; }
+.anTableWrap { overflow-x: auto; }
+.anTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.anTable th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 8px 6px 0; white-space: nowrap; }
+.anTable td { padding: 8px 8px 8px 0; border-top: 1px solid var(--border); }
+.anDot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid var(--border-strong); }
+.anDotWhite { background: #f1f5f9; }
+.anDotBlack { background: #0b1220; }
+.anGood { color: var(--good); }
+.anBad { color: var(--bad); }
+.anBars { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.anBarLabel { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.anBarTrack { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.anBarFill { height: 100%; background: var(--bad); border-radius: 99px; min-width: 2px; }
+.anBarMeta { font-size: 12px; margin-top: 4px; }
+.anTrainHead { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 13px; }
+.anStreak { color: var(--warn); font-weight: 600; }
+.anTrain { display: grid; gap: 18px; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); align-items: start; }
+.anBoard { width: 100%; max-width: 420px; }
+.anTrainSide { display: grid; gap: 12px; font-size: 13px; }
+.anPrompt { margin: 0; font-size: 16px; font-weight: 600; }
+.anVerdict { min-height: 22px; font-size: 14px; }
+@media (max-width: 760px) {
+  .anTrain { grid-template-columns: minmax(0, 1fr); }
+  .anBoard { max-width: none; }
+}
+
+/* "More" section at the bottom: Puzzle Rush, live games, clubs, tournaments */
+.moreDetails { border-top: 1px solid var(--border); padding-top: 8px; }
+.moreSummary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 10px 0; }
+.moreSummary:hover { color: var(--text); }
+.moreBody { margin-top: 12px; }
+.anTrainSide .anRunRow { justify-content: flex-start; }
+
+/* ---------- Tabs, game review, explorer ---------- */
+:root { --rv-white: rgba(226, 232, 240, 0.22); --rv-black: rgba(15, 24, 41, 0.9); }
+.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  background: none; border: none; color: var(--muted); font: inherit; font-size: 14px; padding: 10px 14px;
+  cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; margin-bottom: -1px;
+}
+.tab:hover { color: var(--text); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+.tabActive { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+.anRunControls { display: flex; flex-wrap: wrap; gap: 12px; }
+.anNoWrap { white-space: nowrap; }
+.anMore { margin-top: 12px; }
+.anBarAccent { background: var(--accent); }
+.anList { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.anListRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.anListRow:first-child { border-top: 0; }
+.anRepeats { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.anRepeat { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: center; font-size: 14px; }
+.anRepeatBoard { width: 150px; pointer-events: none; }
+.anRepeatBody { display: grid; gap: 6px; }
+.anRepeatActions { justify-content: flex-start; }
+.anSeg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+.anSegBtn { background: none; border: none; color: var(--muted); font: inherit; font-size: 13px; padding: 7px 14px; cursor: pointer; }
+.anSegActive { background: #2563eb; color: #fff; }
+.anCrumbs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.anCrumb { background: var(--panel); border: 1px solid var(--border); color: var(--text); font: inherit; font-size: 13px; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.anCrumb:disabled { opacity: 0.6; cursor: default; }
+.anMoveBtn { background: none; border: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+.anMoveBtn:hover { text-decoration: underline; }
+
+.rv { display: grid; gap: 14px; outline: none; }
+.rv:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+.rvTitle { text-transform: none; letter-spacing: 0; }
+.rvTop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; }
+.rvTopLinks { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; }
+.rvTopLinks a { color: var(--accent); }
+.rvGraph { width: 100%; height: 120px; border-radius: 10px; cursor: pointer; border: 1px solid var(--border); display: block; }
+.rvMain { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.rvBoardCol { display: grid; gap: 10px; }
+.rvBoard { width: 100%; max-width: 480px; }
+.rvControls { display: flex; flex-wrap: wrap; gap: 8px; }
+.rvSide { display: grid; gap: 14px; min-width: 0; }
+.rvNow { display: grid; gap: 4px; font-size: 14px; min-height: 96px; }
+.rvNowMove { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.rvBadge { font-size: 14px; border-radius: 6px; padding: 1px 8px; background: var(--border); }
+.rvMoves { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 340px; overflow-y: auto; font-size: 14px; }
+.rvMoves li { display: grid; grid-template-columns: 36px 1fr 1fr; align-items: center; }
+.rvNum { color: var(--faint); font-size: 12px; }
+.rvMove { background: none; border: none; border-radius: 6px; color: var(--text); font: inherit; text-align: left; padding: 4px 8px; cursor: pointer; }
+.rvMove:hover { background: var(--panel); }
+.rvMove small { margin-left: 4px; font-weight: 700; }
+.rvCurrent { background: rgba(96, 165, 250, 0.25); }
+.rvInacc small, .rvInacc.rvBadge { color: var(--warn); }
+.rvMistake small, .rvMistake.rvBadge { color: #fb923c; }
+.rvBlunder small, .rvBlunder.rvBadge { color: var(--bad); }
+@media (max-width: 760px) {
+  .rvMain { grid-template-columns: minmax(0, 1fr); }
+  .rvBoard { max-width: none; }
+  .anRepeat { grid-template-columns: minmax(0, 1fr); }
+  .anRepeatBoard { width: 200px; }
+  .rvTopLinks { margin-left: 0; }
+}
+
+.anInput {
+  background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 9px 12px; font: inherit; min-width: 0; flex: 1 1 140px;
+}
+.anInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.anInput[aria-invalid="true"] { border-color: var(--bad); }
+.anMoveForm { display: grid; gap: 6px; }
+
+/* Touch screens and narrow windows: comfortable tap targets (44px is the usual guideline). */
+@media (pointer: coarse), (max-width: 760px) {
+  .btn, .tab, .anSegBtn, .anCrumb, .anSelect select, .anInput { min-height: 44px; }
+  .rvControls .btn { min-width: 44px; }
+  .rvMove { padding: 10px 8px; }
+  .anMoveBtn { padding: 10px 4px; min-height: 44px; }
+  .rvTopLinks a { display: inline-flex; align-items: center; min-height: 44px; }
 }
