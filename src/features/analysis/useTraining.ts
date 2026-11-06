@@ -33,7 +33,7 @@ export function useTraining(username: string, games: AnalyzedGame[]) {
   const deck: MoveError[] = useMemo(() => {
     if (!loaded) return [];
     const before = new Set(Object.entries(log.solved).filter(([, day]) => day !== today).map(([id]) => id));
-    return buildDeck(games, before, today, DECK_SIZE);
+    return buildDeck(games, before, today, DECK_SIZE, new Set(Object.keys(log.failed)));
     // Only rebuild when the analysed games change, never when a puzzle gets solved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [games, loaded, today]);
@@ -44,7 +44,20 @@ export function useTraining(username: string, games: AnalyzedGame[]) {
     (id: string) => {
       setLog((prev) => {
         if (prev.solved[id] === today) return prev;
-        const next = { ...prev, solved: { ...prev.solved, [id]: today } };
+        const { [id]: _retried, ...failed } = prev.failed;
+        const next = { ...prev, solved: { ...prev.solved, [id]: today }, failed };
+        void saveTrainingLog(username, next);
+        return next;
+      });
+    },
+    [username, today]
+  );
+
+  const markFailed = useCallback(
+    (id: string) => {
+      setLog((prev) => {
+        if (prev.failed[id] || prev.solved[id]) return prev;
+        const next = { ...prev, failed: { ...prev.failed, [id]: today } };
         void saveTrainingLog(username, next);
         return next;
       });
@@ -55,5 +68,5 @@ export function useTraining(username: string, games: AnalyzedGame[]) {
   const days = useMemo(() => [...new Set(Object.values(log.solved))], [log]);
   const streak = trainingStreak(days, today);
 
-  return { deck, solvedToday, markSolved, streak, loaded };
+  return { deck, solvedToday, markSolved, markFailed, retryCount: Object.keys(log.failed).length, streak, loaded };
 }

@@ -1,30 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { accuracyTrend, buildDeck, openingReport, phaseBreakdown, puzzleId, summarize, topInsights } from './aggregate';
-import type { AnalyzedGame, MoveError, Phase, Side } from './types';
+import { makeError, makeGame } from './fixtures';
 
-function err(gameId: string, ply: number, winLoss: number, trainable = true): MoveError {
-  return {
-    gameId, ply, moveNumber: ply / 2 + 1, color: 'white', fenBefore: 'f', san: 'a', bestUci: 'e2e4', bestSan: 'e4',
-    winBefore: 60, winAfter: 60 - winLoss, winLoss, kind: winLoss >= 30 ? 'blunder' : 'mistake', phase: 'middlegame', opening: 'Sicilian Defense', trainable,
-  };
-}
-
-function game(id: string, opts: { opening?: string; color?: Side; result?: 'win' | 'loss' | 'draw'; accuracy?: number; errors?: MoveError[]; phase?: Phase; endTime?: number } = {}): AnalyzedGame {
-  const errors = opts.errors ?? [];
-  const blunders = errors.filter((e) => e.kind === 'blunder').length;
-  const mistakes = errors.filter((e) => e.kind === 'mistake').length;
-  const phase = opts.phase ?? 'middlegame';
-  const byPhase = { opening: { moves: 10, inaccuracy: 0, mistake: 0, blunder: 0 }, middlegame: { moves: 20, inaccuracy: 0, mistake: 0, blunder: 0 }, endgame: { moves: 5, inaccuracy: 0, mistake: 0, blunder: 0 } };
-  byPhase[phase].mistake += mistakes;
-  byPhase[phase].blunder += blunders;
-  return {
-    meta: { id, url: `https://chess.com/game/${id}`, endTime: opts.endTime ?? 1_700_000_000, timeClass: 'blitz', color: opts.color ?? 'white', result: opts.result ?? 'win' },
-    analysis: {
-      gameId: id, color: opts.color ?? 'white', opening: opts.opening ?? 'Sicilian Defense', engine: 't', depth: 1, analyzedAt: 0, accuracy: opts.accuracy ?? 80,
-      playerMoves: 35, counts: { inaccuracy: 0, mistake: mistakes, blunder: blunders }, byPhase, evals: [], errors,
-    },
-  };
-}
+const err = (gameId: string, ply: number, winLoss: number, trainable = true) => makeError(gameId, ply, winLoss, { trainable });
+const game = makeGame;
 
 describe('summarize', () => {
   it('averages accuracy and counts results and errors', () => {
@@ -82,6 +61,17 @@ describe('topInsights', () => {
   });
 });
 
+describe('topInsights, motifs', () => {
+  it('leads with the most common kind of mistake when it dominates', () => {
+    const games = ['1', '2', '3'].map((id) => game(id, { errors: [makeError(id, 2, 40, { motif: 'hung-piece' })] }));
+    expect(topInsights(games)[0]).toContain('left a piece hanging');
+  });
+  it('mentions thrown wins', () => {
+    const games = ['1', '2', '3'].map((id) => game(id, { peakWin: 90, result: 'loss' }));
+    expect(topInsights(games).join(' ')).toContain('failed to win 3');
+  });
+});
+
 describe('buildDeck', () => {
   const games = [
     game('a', { errors: [err('a', 2, 50), err('a', 4, 45), err('a', 6, 40)] }),
@@ -95,5 +85,10 @@ describe('buildDeck', () => {
     const one = buildDeck(games, new Set(), '2026-11-04', 3).map(puzzleId);
     expect(buildDeck(games, new Set(), '2026-11-04', 3).map(puzzleId)).toEqual(one);
     expect(buildDeck(games, new Set(['a:2']), '2026-11-04', 3).map(puzzleId)).not.toContain('a:2');
+  });
+  it('puts puzzles you failed before first, even beyond the per-game limit', () => {
+    const deck = buildDeck(games, new Set(), '2026-11-04', 3, new Set(['a:6']));
+    expect(puzzleId(deck[0])).toBe('a:6');
+    expect(deck).toHaveLength(3);
   });
 });

@@ -11,6 +11,8 @@ export const ANALYSIS_DEPTH = 12;
 
 export type AnalysisStatus = 'idle' | 'loading-games' | 'starting-engine' | 'analyzing' | 'done' | 'cancelled' | 'error';
 
+export type RunOptions = { limit: number; timeClass?: 'bullet' | 'blitz' | 'rapid' | 'daily' };
+
 export type AnalysisProgress = {
   /** Games finished so far, out of the ones that still needed analysis. */
   done: number;
@@ -46,7 +48,7 @@ export function usePlayerAnalysis(username: string) {
   }, [username]);
 
   const run = useCallback(
-    async (limit: number) => {
+    async ({ limit, timeClass }: RunOptions) => {
       if (abortRef.current) return; // already running
       const controller = new AbortController();
       abortRef.current = controller;
@@ -56,7 +58,7 @@ export function usePlayerAnalysis(username: string) {
       let engine: ReturnType<typeof createStockfish> | null = null;
 
       try {
-        const res = await fetch(`/api/analysis-games?username=${encodeURIComponent(username)}&limit=${limit}`, { signal: controller.signal });
+        const res = await fetch(`/api/analysis-games?username=${encodeURIComponent(username)}&limit=${limit}${timeClass ? `&timeClass=${timeClass}` : ''}`, { signal: controller.signal });
         const body = (await res.json().catch(() => ({}))) as GamesResponse;
         if (!res.ok) throw new Error(body.error ?? 'Could not load your games from Chess.com.');
 
@@ -83,8 +85,8 @@ export function usePlayerAnalysis(username: string) {
             onProgress: (d, t) => setProgress({ done, total: todo.length, currentFraction: d / t }),
           });
           if (analysis) {
-            const { id, url, endTime, timeClass, color, result } = game;
-            cache.games[id] = { meta: { id, url, endTime, timeClass, color, result }, analysis };
+            const { id, url, endTime, color, result, ending } = game;
+            cache.games[id] = { meta: { id, url, endTime, timeClass: game.timeClass, color, result, ending }, analysis };
           } else {
             cache.skipped.push(game.id);
           }

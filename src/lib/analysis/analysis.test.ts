@@ -121,3 +121,42 @@ describe('UCI parsing', () => {
     expect(parseBestMove('info depth 1')).toBeUndefined();
   });
 });
+
+describe('analyzeGame details', () => {
+  const CLOCK_PGN = `[White "alice"]
+[Black "bob"]
+[WhiteElo "1500"]
+[BlackElo "1620"]
+[TimeControl "180+2"]
+[UTCDate "2026.11.04"]
+[Termination "bob won by checkmate"]
+[ECOUrl "https://www.chess.com/openings/Bird-Opening-1...e5"]
+
+1. f3 {[%clk 0:02:59]} 1... e5 {[%clk 0:02:58]} 2. g4 {[%clk 0:02:50]} 2... Qh4# {[%clk 0:02:57]} 0-1`;
+
+  it('records every move with its quality, best move, clock and time spent', async () => {
+    const a = await analyzeGame({ gameId: 'c1', pgn: CLOCK_PGN, username: 'alice' }, scripted(SCRIPT), { depth: 8 });
+    expect(a?.plies.map((p) => p.san)).toEqual(['f3', 'e5', 'g4', 'Qh4#']);
+    expect(a?.plies[2]).toMatchObject({ kind: 'blunder', bestUci: 'd2d4', clock: 170, spent: 11 }); // previous clock 179 + 2 increment - 170
+    expect(a?.plies[0].spent).toBe(3); // 180 + 2 - 179
+  });
+
+  it('reads players, ratings, time control and result text', async () => {
+    const a = await analyzeGame({ gameId: 'c1', pgn: CLOCK_PGN, username: 'alice' }, scripted(SCRIPT), { depth: 8 });
+    expect(a?.info).toMatchObject({ opponent: 'bob', opponentRating: 1620, playerRating: 1500, timeControl: { base: 180, inc: 2 }, termination: 'bob won by checkmate' });
+  });
+
+  it('names the blunder and finds the turning point and the lowest point', async () => {
+    const a = await analyzeGame({ gameId: 'c1', pgn: CLOCK_PGN, username: 'alice' }, scripted(SCRIPT), { depth: 8 });
+    expect(a?.errors[0].motif).toBe('allowed-mate');
+    expect(a?.errors[0].piece).toBe('p');
+    expect(a?.turningPly).toBe(2);
+    expect(a?.lowWin).toBeLessThan(5);
+    expect(a?.peakWin).toBeGreaterThan(40);
+  });
+
+  it('works without clock data', async () => {
+    const a = await analyzeGame({ gameId: 'g1', pgn: PGN, username: 'alice' }, scripted(SCRIPT), { depth: 8 });
+    expect(a?.plies.every((p) => p.clock === null && p.spent === null)).toBe(true);
+  });
+});

@@ -13,13 +13,18 @@ type TrainSectionProps = {
   solvedToday: ReadonlySet<string>;
   streak: number;
   onSolved: (id: string) => void;
-  /** Link to the original game on Chess.com. */
-  gameUrl: (gameId: string) => string | undefined;
+  /** Called when a wrong move is played, so the puzzle comes back until it is solved. */
+  onFailed: (id: string) => void;
+  retryCount: number;
+  /** Games analysed so far, to tell "nothing analysed" from "nothing to practise". */
+  analysedCount: number;
+  /** Opens the full game review at the position after the mistake. */
+  onReview: (gameId: string, ply: number) => void;
 };
 
 const KIND_LABEL = { inaccuracy: 'inaccuracy', mistake: 'mistake', blunder: 'blunder' } as const;
 
-export function TrainSection({ deck, solvedToday, streak, onSolved, gameUrl }: TrainSectionProps) {
+export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, retryCount, analysedCount, onReview }: TrainSectionProps) {
   const [index, setIndex] = useState(0);
   const [fen, setFen] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<Verdict>({ kind: 'idle' });
@@ -42,7 +47,10 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, gameUrl }: T
     return (
       <Panel title="Daily Blunder Deck">
         <div className="muted insightEmpty">
-          Analyse some games and your biggest mistakes turn into a daily set of puzzles. Streak: {streak} {streak === 1 ? 'day' : 'days'}.
+          {analysedCount === 0
+            ? 'Analyse some games and your biggest mistakes turn into a daily set of puzzles.'
+            : 'No puzzles yet: your analysed games have no mistakes worth practising. Analyse more games, or a faster time control, to find some.'}{' '}
+          Streak: {streak} {streak === 1 ? 'day' : 'days'}.
         </div>
       </Panel>
     );
@@ -81,6 +89,7 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, gameUrl }: T
       if (token.current !== mine) return;
     }
     setVerdict({ kind: 'wrong', san: move.san });
+    onFailed(currentId);
     // Put the piece back so the player can try again.
     setTimeout(() => {
       if (token.current === mine) setFen(current.fenBefore);
@@ -102,6 +111,7 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, gameUrl }: T
       <div className="anTrainHead">
         <span>
           <strong>{doneCount}</strong> of {deck.length} solved today
+          {retryCount > 0 ? <span className="muted"> · {retryCount} to retry</span> : null}
         </span>
         <span className="anStreak" title="Days in a row with at least one puzzle solved">
           🔥 {streak} {streak === 1 ? 'day' : 'days'}
@@ -155,11 +165,9 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, gameUrl }: T
                   Next puzzle
                 </button>
               ) : null}
-              {gameUrl(current.gameId) ? (
-                <a className="btn btnGhost" href={gameUrl(current.gameId)} target="_blank" rel="noreferrer">
-                  Open game
-                </a>
-              ) : null}
+              <button type="button" className="btn btnGhost" onClick={() => onReview(current.gameId, current.ply + 1)}>
+                Review full game
+              </button>
             </div>
             {allDone ? <p className="anGood">Deck complete. Come back tomorrow for a new one.</p> : null}
           </div>

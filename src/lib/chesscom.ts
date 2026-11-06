@@ -497,6 +497,7 @@ export type AnalysisGame = {
   rated: boolean;
   color: 'white' | 'black';
   result: GameRecord['result'];
+  ending: GameRecord['ending'];
   opponentRating: number | null;
 };
 
@@ -507,9 +508,11 @@ export type AnalysisGame = {
 export async function fetchRecentAnalysisGames(params: {
   username: string;
   limit: number;
+  /** Only this time class (blitz, rapid, ...). Omit for all standard games. */
+  timeClass?: string;
   signal?: AbortSignal;
 }): Promise<{ games: AnalysisGame[]; missingMonths: number }> {
-  const { username, limit, signal } = params;
+  const { username, limit, timeClass, signal } = params;
   const indexRes = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(username)}/games/archives`, {
     method: 'GET',
     headers: CHESSCOM_HEADERS,
@@ -533,6 +536,7 @@ export async function fetchRecentAnalysisGames(params: {
       if ((g.rules ?? 'chess') !== 'chess' || !g.pgn || !g.url) continue;
       const record = toGameRecord(g, username, g.time_class ?? 'unknown');
       if (!record || record.result === 'other') continue;
+      if (timeClass && record.timeClass !== timeClass) continue;
       games.push({
         id: g.url.split('/').pop() ?? g.url,
         url: g.url,
@@ -542,6 +546,7 @@ export async function fetchRecentAnalysisGames(params: {
         rated: g.rated ?? false,
         color: record.color,
         result: record.result,
+        ending: record.ending,
         opponentRating: record.opponentRating,
       });
       if (games.length >= limit) break;

@@ -1,6 +1,10 @@
-import type { AnalyzedGame, MoveError, Phase, Side } from './types';
+import { conversion } from './conversion';
+import { MOTIF_LABELS, motifBreakdown } from './patterns';
+import { timeStats } from './timeStats';
+import type { AnalyzedGame, Motif, MoveError, Phase, Side } from './types';
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 export type Summary = {
@@ -34,7 +38,7 @@ export function summarize(games: AnalyzedGame[]): Summary {
     win,
     draw,
     loss,
-    perGame: { inaccuracy: round1(totals.inaccuracy / n), mistake: round1(totals.mistake / n), blunder: round1(totals.blunder / n) },
+    perGame: { inaccuracy: round2(totals.inaccuracy / n), mistake: round2(totals.mistake / n), blunder: round2(totals.blunder / n) },
     totals,
   };
 }
@@ -116,24 +120,52 @@ export function accuracyTrend(games: AnalyzedGame[]): TrendPoint[] {
     }));
 }
 
-/** Insights shown at the top of the page: plain sentences about the single biggest fixes. */
+const MOTIF_ADVICE: Partial<Record<Motif, string>> = {
+  'hung-piece': 'Before every move, check what your opponent can capture afterwards.',
+  'missed-capture': 'Before settling for a quiet move, check every capture on the board.',
+  'missed-mate': 'Look at every check before every move, especially when you are ahead.',
+  'allowed-mate': 'Check your opponent’s checks before moving: keep your king safe.',
+  'missed-tactic': 'Look for checks, captures and threats first, on every move.',
+};
+
+/** Insights shown at the top of the page: plain sentences about the biggest fixes, most useful first. */
 export function topInsights(games: AnalyzedGame[]): string[] {
   if (games.length < 3) return [];
   const out: string[] = [];
+  const s = summarize(games);
+
+  const motifs = motifBreakdown(games);
+  const top = motifs[0];
+  if (top && top.key !== 'positional' && top.count >= 3 && top.pct >= 30) {
+    out.push(`${top.pct}% of your serious errors are "${MOTIF_LABELS[top.key].toLowerCase()}". ${MOTIF_ADVICE[top.key] ?? ''}`.trim());
+  }
+
   const phases = phaseBreakdown(games).filter((p) => p.moves >= 20);
   const worstPhase = [...phases].sort((a, b) => b.errorsPer100 - a.errorsPer100)[0];
   if (worstPhase && worstPhase.errorsPer100 > 0) {
     out.push(`Most of your serious errors come in the ${worstPhase.phase}: ${worstPhase.errorsPer100} per 100 moves.`);
   }
+
   const leak = openingReport(games).find((o) => o.cost > 0);
   if (leak) {
     out.push(`${leak.opening} as ${leak.color === 'white' ? 'White' : 'Black'} is your costliest opening: ${leak.scorePct}% over ${leak.games} games.`);
   }
-  const s = summarize(games);
+
+  const conv = conversion(games);
+  if (conv.winning.thrown >= 2) {
+    out.push(`You had a clearly winning position in ${conv.winning.games} games and failed to win ${conv.winning.thrown} of them.`);
+  }
+
+  const time = timeStats(games);
+  const { normal, trouble } = time.seriousPer100;
+  if (normal !== null && trouble !== null && trouble > normal * 1.5 && trouble - normal >= 3) {
+    out.push(`In time trouble you make ${trouble} serious errors per 100 moves, against ${normal} with time on the clock.`);
+  }
+
   if (s.perGame.blunder >= 0.5) {
     out.push(`You blunder about once every ${round1(1 / s.perGame.blunder)} games. Fixing those is the fastest rating gain.`);
   }
-  return out.slice(0, 3);
+  return out.slice(0, 4);
 }
 
 // ---------- Daily Blunder Deck ----------
@@ -158,20 +190,25 @@ export const puzzleId = (e: Pick<MoveError, 'gameId' | 'ply'>) => `${e.gameId}:$
 
 /**
  * Today's puzzles: the biggest mistakes from your own games, at most two per game, in a
- * shuffled order that is stable for the whole day. Puzzles you already solved are skipped.
+ * shuffled order that is stable for the whole day. Puzzles you already solved are skipped, and
+ * puzzles you got wrong before (`retry`) come first until you solve them.
  */
-export function buildDeck(games: AnalyzedGame[], solved: ReadonlySet<string>, day: string, size = 5): MoveError[] {
+export function buildDeck(games: AnalyzedGame[], solved: ReadonlySet<string>, day: string, size = 5, retry: ReadonlySet<string> = new Set()): MoveError[] {
   const pool: MoveError[] = [];
   for (const { analysis } of games) {
     const best = analysis.errors.filter((e) => e.trainable && !solved.has(puzzleId(e))).sort((a, b) => b.winLoss - a.winLoss);
-    pool.push(...best.slice(0, 2));
+    // A puzzle you failed before is always kept, even if it is not one of the game's two biggest.
+    pool.push(...best.filter((e, i) => i < 2 || retry.has(puzzleId(e))));
   }
   pool.sort((a, b) => b.winLoss - a.winLoss || puzzleId(a).localeCompare(puzzleId(b)));
-  const top = pool.slice(0, size * 3);
+  // Failed puzzles are never cut by the size limit below.
+  const top = [...pool.filter((e) => retry.has(puzzleId(e))), ...pool.filter((e) => !retry.has(puzzleId(e))).slice(0, size * 3)];
   const rand = mulberry32(hash(day));
   for (let i = top.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [top[i], top[j]] = [top[j], top[i]];
   }
-  return top.slice(0, size);
+  const retries = top.filter((e) => retry.has(puzzleId(e)));
+  const fresh = top.filter((e) => !retry.has(puzzleId(e)));
+  return [...retries, ...fresh].slice(0, size);
 }

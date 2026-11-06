@@ -3,3 +3,4 @@ export { LoadingState } from './LoadingState';
 export { Panel } from './Panel';
 export { StatCard } from './StatCard';
 export { SectionBoundary } from './SectionBoundary';
+export { Tabs } from "./Tabs";

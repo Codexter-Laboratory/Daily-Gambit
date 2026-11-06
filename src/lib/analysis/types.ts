@@ -17,6 +17,10 @@ export interface Engine {
 }
 
 export type MoveKind = 'ok' | 'inaccuracy' | 'mistake' | 'blunder';
+
+/** What kind of error a mistake was. A heuristic read of the position, not engine output. */
+export type Motif = 'missed-mate' | 'allowed-mate' | 'hung-piece' | 'missed-capture' | 'missed-tactic' | 'positional';
+export type PieceLetter = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
 export type Phase = 'opening' | 'middlegame' | 'endgame';
 
 export type MoveError = {
@@ -37,8 +41,42 @@ export type MoveError = {
   kind: Exclude<MoveKind, 'ok'>;
   phase: Phase;
   opening: string | null;
+  motif: Motif;
+  /** The piece that moved. */
+  piece: PieceLetter;
+  /** Seconds left on the player's clock after the move, and seconds the move took. Null when the game has no clock data. */
+  clock: number | null;
+  spent: number | null;
+  /** True when the clock was low (see isTimeTrouble). */
+  timeTrouble: boolean;
   /** True when the position makes a fair puzzle: the player was not already lost. */
   trainable: boolean;
+};
+
+/** One half-move, for the game review board and the time statistics. */
+export type PlyInfo = {
+  san: string;
+  uci: string;
+  /** Quality of the move for whoever played it (both sides are rated). */
+  kind: MoveKind;
+  /** The engine's preferred move in this position, UCI. Null for the final position. */
+  bestUci: string | null;
+  /** Seconds left on the mover's clock after the move, and seconds the move took. */
+  clock: number | null;
+  spent: number | null;
+};
+
+export type TimeControl = { base: number; inc: number };
+
+export type GameInfo = {
+  opponent: string;
+  opponentRating: number | null;
+  playerRating: number | null;
+  /** PGN UTC date, "2026.11.04". */
+  date: string | null;
+  timeControl: TimeControl | null;
+  /** PGN Termination text, e.g. "hikaru won by resignation". */
+  termination: string | null;
 };
 
 export type PhaseStats = { moves: number; inaccuracy: number; mistake: number; blunder: number };
@@ -58,6 +96,13 @@ export type GameAnalysis = {
   /** White-POV centipawns after each half-move (index 0 is the start position), for the eval graph. */
   evals: number[];
   errors: MoveError[];
+  plies: PlyInfo[];
+  info: GameInfo;
+  /** Highest and lowest win chance (0-100) the player had at any point. Shows won and lost positions. */
+  peakWin: number;
+  lowWin: number;
+  /** The move that swung the game the most against the player, if it swung it at all. */
+  turningPly: number | null;
 };
 
 /** The bits of a game the reports need next to its analysis. */
@@ -68,6 +113,8 @@ export type GameMeta = {
   timeClass: string;
   color: Side;
   result: 'win' | 'loss' | 'draw' | 'other';
+  /** How the game ended: "timeout", "resignation", "checkmate", ... */
+  ending: string;
 };
 
 export type AnalyzedGame = { meta: GameMeta; analysis: GameAnalysis };

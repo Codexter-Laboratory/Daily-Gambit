@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Panel } from '../../components';
-import type { AnalysisProgress, AnalysisStatus } from './usePlayerAnalysis';
+import { TIME_CLASSES, type TimeClassFilter } from './format';
+import type { AnalysisProgress, AnalysisStatus, RunOptions } from './usePlayerAnalysis';
 
-const SIZES = [10, 20, 30] as const;
+const SIZES = [10, 25, 50, 100] as const;
 
 type RunPanelProps = {
   status: AnalysisStatus;
@@ -11,7 +12,7 @@ type RunPanelProps = {
   error: string | null;
   analysedCount: number;
   cacheReady: boolean;
-  onRun: (limit: number) => void;
+  onRun: (options: RunOptions) => void;
   onCancel: () => void;
 };
 
@@ -21,15 +22,16 @@ const STATUS_TEXT: Partial<Record<AnalysisStatus, string>> = {
 };
 
 export function RunPanel({ status, running, progress, error, analysedCount, cacheReady, onRun, onCancel }: RunPanelProps) {
-  const [size, setSize] = useState<number>(20);
+  const [size, setSize] = useState<number>(25);
+  const [timeClass, setTimeClass] = useState<TimeClassFilter>('all');
   const fraction = progress && progress.total > 0 ? (progress.done + progress.currentFraction) / progress.total : 0;
 
   return (
     <Panel title="Engine analysis" busy={running}>
       <div className="anRun">
         <p className="muted anRunText">
-          Stockfish reviews your games on this device, move by move, and finds where you lose points. Nothing is uploaded.
-          {analysedCount > 0 ? ` ${analysedCount} games analysed so far.` : ''}
+          Stockfish reviews your games on this device, move by move: where you lose points, which mistakes repeat, how you use the clock.
+          Nothing is uploaded.{analysedCount > 0 ? ` ${analysedCount} games analysed so far.` : ''}
         </p>
 
         {running ? (
@@ -48,23 +50,36 @@ export function RunPanel({ status, running, progress, error, analysedCount, cach
           </div>
         ) : (
           <div className="anRunRow">
-            <label className="anSelect">
-              <span className="muted">Games</span>
-              <select value={size} onChange={(e) => setSize(Number(e.target.value))} aria-label="How many recent games to analyse">
-                {SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    Last {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="btn btnPrimary" disabled={!cacheReady} onClick={() => onRun(size)}>
+            <div className="anRunControls">
+              <label className="anSelect">
+                <span className="muted">Games</span>
+                <select value={size} onChange={(e) => setSize(Number(e.target.value))} aria-label="How many recent games to analyse">
+                  {SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      Last {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="anSelect">
+                <span className="muted">Type</span>
+                <select value={timeClass} onChange={(e) => setTimeClass(e.target.value as TimeClassFilter)} aria-label="Which time control to analyse">
+                  <option value="all">All</option>
+                  {TIME_CLASSES.map((t) => (
+                    <option key={t} value={t}>
+                      {t[0].toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button type="button" className="btn btnPrimary" disabled={!cacheReady} onClick={() => onRun({ limit: size, timeClass: timeClass === 'all' ? undefined : timeClass })}>
               {analysedCount > 0 ? 'Analyse new games' : 'Analyse my games'}
             </button>
           </div>
         )}
 
-        {status === 'done' && !running ? <div className="muted anNote">Up to date.</div> : null}
+        {status === 'done' && !running ? <div className="muted anNote">Up to date. Analysed games are kept on this device.</div> : null}
         {status === 'cancelled' ? <div className="muted anNote">Stopped. Finished games are kept.</div> : null}
         {error ? (
           <div className="anError" role="alert">
