@@ -1,0 +1,21 @@
+{
+  "name": "@daily-gambit/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chess analysis logic shared by the web app and the API. Plain TypeScript, no browser or server APIs.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "vitest": "^3.2.0"
+  }
+}
