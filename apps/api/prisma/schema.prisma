@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+  // Its own output, so this service and the web app (which has a different schema) never overwrite each other.
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// One analysed game, for one player. Public games are the same for everybody, but the analysis is
+/// from the point of view of `username`, so the row is per player.
+model AnalyzedGame {
+  id        Int      @id @default(autoincrement())
+  username  String
+  gameId    String
+  /// Unix seconds when the game ended. Used to list the newest games first.
+  endTime   Int
+  /// GameMeta and GameAnalysis from @daily-gambit/core, stored as they are.
+  meta      Json
+  analysis  Json
+  /// Which version of the analysis code produced this row. Rows from an older version are analysed again.
+  schema    Int
+  engine    String
+  depth     Int
+  createdAt DateTime @default(now())
+
+  @@unique([username, gameId])
+  @@index([username, endTime(sort: Desc)])
+}
