@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Panel } from '../../components';
+import { Panel, TableScroll } from '../../components';
 import type { AnalyzedGame } from '../../lib/analysis/types';
 import { RESULT_LABEL } from './format';
 
@@ -36,7 +36,7 @@ export function GamesTable({ games, onReview }: { games: AnalyzedGame[]; onRevie
           </select>
         </label>
       </div>
-      <div className="anTableWrap">
+      <TableScroll label="Analysed games">
         <table className="anTable">
           <thead>
             <tr>
@@ -54,7 +54,7 @@ export function GamesTable({ games, onReview }: { games: AnalyzedGame[]; onRevie
               <tr key={g.meta.id}>
                 <td className="anNoWrap">{new Date(g.meta.endTime * 1000).toISOString().slice(0, 10)}</td>
                 <td className={g.meta.result === 'win' ? 'anGood' : g.meta.result === 'loss' ? 'anBad' : undefined}>
-                  <span className={g.analysis.color === 'white' ? 'anDot anDotWhite' : 'anDot anDotBlack'} aria-label={`as ${g.analysis.color}`} />
+                  <span role="img" className={g.analysis.color === 'white' ? 'anDot anDotWhite' : 'anDot anDotBlack'} aria-label={`as ${g.analysis.color}`} />
                   {RESULT_LABEL[g.meta.result]}
                 </td>
                 <td>
@@ -75,7 +75,7 @@ export function GamesTable({ games, onReview }: { games: AnalyzedGame[]; onRevie
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {shown < rows.length ? (
         <button type="button" className="btn btnGhost anMore" onClick={() => setShown((n) => n + PAGE)}>
           Show more ({rows.length - shown} left)

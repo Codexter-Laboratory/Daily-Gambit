@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chessboard } from 'react-chessboard';
-import { Panel } from '../../components';
+import { Panel, useBoardLabels } from '../../components';
 import { puzzleId } from '../../lib/analysis/aggregate';
-import { isAcceptableAlternative, isBestMove, playMove, type PlayedMove } from '../../lib/analysis/puzzle';
+import { isAcceptableAlternative, isBestMove, playMove, playSan, type PlayedMove } from '../../lib/analysis/puzzle';
 import type { MoveError } from '../../lib/analysis/types';
 import { getSharedStockfish } from './stockfishClient';
 
@@ -32,6 +32,10 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, re
   const current = deck[index] as MoveError | undefined;
   const currentId = current ? puzzleId(current) : null;
   const token = useRef(0);
+  const [boardEl, setBoardEl] = useState<HTMLDivElement | null>(null);
+  const [typed, setTyped] = useState('');
+  const [typedError, setTypedError] = useState(false);
+  useBoardLabels(boardEl);
 
   // Reset the board whenever the puzzle changes.
   useEffect(() => {
@@ -39,6 +43,8 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, re
     setFen(current?.fenBefore ?? null);
     setVerdict(solvedToday.has(currentId ?? '') ? { kind: 'solved', san: current?.bestSan ?? '', alternative: false } : { kind: 'idle' });
     setShowAnswer(false);
+    setTyped('');
+    setTypedError(false);
     // Only on puzzle change: solving it must not reset the board that shows the answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId]);
@@ -104,6 +110,19 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, re
     return true;
   }
 
+  function handleTyped(e: React.FormEvent) {
+    e.preventDefault();
+    if (!current || locked || !typed.trim()) return;
+    const move = playSan(current.fenBefore, typed);
+    if (!move) {
+      setTypedError(true);
+      return;
+    }
+    setTypedError(false);
+    setTyped('');
+    void judge(move);
+  }
+
   const next = () => setIndex((i) => (i + 1) % deck.length);
 
   return (
@@ -120,7 +139,7 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, re
 
       {current && fen ? (
         <div className="anTrain">
-          <div className="anBoard">
+          <div className="anBoard" ref={setBoardEl}>
             <Chessboard
               options={{
                 // Letters, digits and dashes only: the board builds CSS selectors from this id.
@@ -142,6 +161,38 @@ export function TrainSection({ deck, solvedToday, streak, onSolved, onFailed, re
             <p className="anPrompt">
               {current.color === 'white' ? 'White' : 'Black'} to move. Find a better move.
             </p>
+
+            <form className="anMoveForm" onSubmit={handleTyped}>
+              <label className="muted" htmlFor="puzzle-move">
+                Or type your move
+              </label>
+              <div className="anRunRow anRepeatActions">
+                <input
+                  id="puzzle-move"
+                  className="anInput"
+                  value={typed}
+                  onChange={(e) => {
+                    setTyped(e.target.value);
+                    setTypedError(false);
+                  }}
+                  placeholder="e.g. Nf3 or exd5"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  disabled={locked}
+                  aria-invalid={typedError}
+                  aria-describedby={typedError ? 'puzzle-move-error' : undefined}
+                />
+                <button type="submit" className="btn btnGhost" disabled={locked || !typed.trim()}>
+                  Play
+                </button>
+              </div>
+              {typedError ? (
+                <span id="puzzle-move-error" className="anBad" role="alert">
+                  That is not a legal move here.
+                </span>
+              ) : null}
+            </form>
 
             <div role="status" aria-live="polite" className="anVerdict">
               {verdict.kind === 'checking' ? <span className="muted">Checking with Stockfish…</span> : null}

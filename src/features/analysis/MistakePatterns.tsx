@@ -50,7 +50,7 @@ export function MistakePatterns({ games, onReview }: Props) {
           <ul className="anRepeats">
             {repeats.map((r) => (
               <li key={`${r.fenBefore}|${r.san}`} className="anRepeat">
-                <div className="anRepeatBoard" aria-hidden="true">
+                <div className="anRepeatBoard" inert>
                   <Chessboard
                     options={{
                       id: `rep-${r.examples[0].gameId}-${r.examples[0].ply}`.replace(/[^a-zA-Z0-9_-]/g, '-'),

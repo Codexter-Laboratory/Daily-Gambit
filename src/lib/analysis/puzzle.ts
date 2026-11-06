@@ -17,6 +17,17 @@ export function playMove(fen: string, from: string, to: string): PlayedMove | nu
   }
 }
 
+/** Plays a move typed as SAN ("Nf3", "exd5", "O-O"). Lenient about case and check marks. Null when illegal or unreadable. */
+export function playSan(fen: string, text: string): PlayedMove | null {
+  const chess = new Chess(fen);
+  try {
+    const move = chess.move(text.trim().replace(/^0-0-0$/i, 'O-O-O').replace(/^0-0$/i, 'O-O'));
+    return { uci: `${move.from}${move.to}${move.promotion ?? ''}`, san: move.san, fenAfter: chess.fen() };
+  } catch {
+    return null;
+  }
+}
+
 export const isBestMove = (error: Pick<MoveError, 'bestUci'>, uci: string) => error.bestUci.toLowerCase() === uci.toLowerCase();
 
 /** How much win chance a different move may give up and still count as correct. */

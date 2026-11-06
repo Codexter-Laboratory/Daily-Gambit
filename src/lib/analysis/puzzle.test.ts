@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAcceptableAlternative, isBestMove, playMove, trainingStreak } from './puzzle';
+import { isAcceptableAlternative, isBestMove, playMove, playSan, trainingStreak } from './puzzle';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -13,6 +13,19 @@ describe('playMove', () => {
   });
   it('promotes to a queen', () => {
     expect(playMove('8/P6k/8/8/8/8/7K/8 w - - 0 1', 'a7', 'a8')).toMatchObject({ uci: 'a7a8q' });
+  });
+});
+
+describe('playSan', () => {
+  it('reads standard notation and tolerates stray check marks and zeros in castling', () => {
+    expect(playSan(START, 'e4')).toMatchObject({ uci: 'e2e4', san: 'e4' });
+    expect(playSan(START, 'Nf3')).toMatchObject({ uci: 'g1f3' });
+    expect(playSan('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', '0-0')).toMatchObject({ uci: 'e1g1' });
+  });
+  it('rejects illegal and unreadable input', () => {
+    expect(playSan(START, 'e5')).toBeNull();
+    expect(playSan(START, 'hello')).toBeNull();
+    expect(playSan(START, '')).toBeNull();
   });
 });
 

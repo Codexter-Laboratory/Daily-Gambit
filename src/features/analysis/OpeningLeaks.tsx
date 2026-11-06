@@ -1,4 +1,4 @@
-import { Panel } from '../../components';
+import { Panel, TableScroll } from '../../components';
 import { openingReport } from '../../lib/analysis/aggregate';
 import type { AnalyzedGame } from '../../lib/analysis/types';
 
@@ -13,7 +13,7 @@ export function OpeningLeaks({ games }: { games: AnalyzedGame[] }) {
       ) : (
         <>
           <div className="muted anNote">Ranked by points lost. Only openings with at least 2 games.</div>
-          <div className="anTableWrap">
+          <TableScroll label="Opening leaks">
             <table className="anTable">
               <thead>
                 <tr>
@@ -28,7 +28,7 @@ export function OpeningLeaks({ games }: { games: AnalyzedGame[] }) {
                 {rows.map((r) => (
                   <tr key={`${r.opening}|${r.color}`}>
                     <td>
-                      <span className={r.color === 'white' ? 'anDot anDotWhite' : 'anDot anDotBlack'} aria-label={r.color === 'white' ? 'as White' : 'as Black'} />
+                      <span role="img" className={r.color === 'white' ? 'anDot anDotWhite' : 'anDot anDotBlack'} aria-label={r.color === 'white' ? 'as White' : 'as Black'} />
                       {r.opening}
                     </td>
                     <td>{r.games}</td>
@@ -39,7 +39,7 @@ export function OpeningLeaks({ games }: { games: AnalyzedGame[] }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </>
       )}
     </Panel>

@@ -403,13 +403,14 @@ select option {
 }
 
 .btnPrimary {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  /* #2563eb with white text is 5.2:1, which passes WCAG AA. The lighter accent blue did not. */
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .btnGhost {
@@ -1183,7 +1184,7 @@ rect.heatCell:hover {
 .anRepeatActions { justify-content: flex-start; }
 .anSeg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
 .anSegBtn { background: none; border: none; color: var(--muted); font: inherit; font-size: 13px; padding: 7px 14px; cursor: pointer; }
-.anSegActive { background: var(--accent-strong); color: #fff; }
+.anSegActive { background: #2563eb; color: #fff; }
 .anCrumbs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
 .anCrumb { background: var(--panel); border: 1px solid var(--border); color: var(--text); font: inherit; font-size: 13px; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .anCrumb:disabled { opacity: 0.6; cursor: default; }
@@ -1221,4 +1222,21 @@ rect.heatCell:hover {
   .anRepeat { grid-template-columns: minmax(0, 1fr); }
   .anRepeatBoard { width: 200px; }
   .rvTopLinks { margin-left: 0; }
+}
+
+.anInput {
+  background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 9px 12px; font: inherit; min-width: 0; flex: 1 1 140px;
+}
+.anInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.anInput[aria-invalid="true"] { border-color: var(--bad); }
+.anMoveForm { display: grid; gap: 6px; }
+
+/* Touch screens and narrow windows: comfortable tap targets (44px is the usual guideline). */
+@media (pointer: coarse), (max-width: 760px) {
+  .btn, .tab, .anSegBtn, .anCrumb, .anSelect select, .anInput { min-height: 44px; }
+  .rvControls .btn { min-width: 44px; }
+  .rvMove { padding: 10px 8px; }
+  .anMoveBtn { padding: 10px 4px; min-height: 44px; }
+  .rvTopLinks a { display: inline-flex; align-items: center; min-height: 44px; }
 }

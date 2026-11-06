@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Panel } from '../../components';
+import { Panel, TableScroll } from '../../components';
 import { openingExplorer } from '../../lib/analysis/openingExplorer';
 import type { AnalyzedGame, Side } from '../../lib/analysis/types';
 import { formatPath } from './format';
@@ -49,7 +49,7 @@ export function OpeningExplorer({ games }: { games: AnalyzedGame[] }) {
           {path.length === 0 ? `No games as ${color} yet.` : `Your games end here: ${formatPath(path)}.`}
         </div>
       ) : (
-        <div className="anTableWrap">
+        <TableScroll label="Moves played from this position">
           <table className="anTable">
             <thead>
               <tr>
@@ -77,7 +77,7 @@ export function OpeningExplorer({ games }: { games: AnalyzedGame[] }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
     </Panel>
   );

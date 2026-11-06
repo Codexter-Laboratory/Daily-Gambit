@@ -100,7 +100,7 @@ export function GameReview({ game, startPly, onClose }: GameReviewProps) {
 
         <div className="rvMain">
           <div className="rvBoardCol">
-            <div className="rvBoard">
+            <div className="rvBoard" inert>
               <Chessboard
                 options={{
                   id: `review-${meta.id}`.replace(/[^a-zA-Z0-9_-]/g, '-'),
