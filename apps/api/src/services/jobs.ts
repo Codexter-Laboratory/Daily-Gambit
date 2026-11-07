@@ -17,7 +17,12 @@ async function isLive(queue: Queue<AnalysisJobData>, jobId: string): Promise<boo
  * Queues an analysis, or hands back the one already running for the same request, so double
  * clicks and several tabs do not pile up duplicate work.
  */
-export async function createOrReuseJob({ queue, redis }: Deps, input: AnalysisJobData): Promise<CreateJobResponse> {
+export async function createOrReuseJob(
+  { queue, redis }: Deps,
+  input: AnalysisJobData,
+  /** Runs only when a new job is about to be created (not when joining one), and may throw to refuse it. */
+  beforeEnqueue: () => Promise<void> = async () => undefined
+): Promise<CreateJobResponse> {
   const key = activeKey(input);
   const jobId = randomUUID();
   const claimed = await redis.set(key, jobId, 'EX', 900, 'NX');
@@ -26,7 +31,13 @@ export async function createOrReuseJob({ queue, redis }: Deps, input: AnalysisJo
     if (existing && (await isLive(queue, existing))) return { jobId: existing, reused: true };
     await redis.set(key, jobId, 'EX', 900); // the earlier job is gone: take over
   }
-  await queue.add('analyse', input, { jobId });
+  try {
+    await beforeEnqueue();
+    await queue.add('analyse', input, { jobId });
+  } catch (e) {
+    await redis.del(key); // the claim was for a job that will not exist
+    throw e;
+  }
   return { jobId, reused: false };
 }
 

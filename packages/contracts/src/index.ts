@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import type { AnalyzedGame } from '@daily-gambit/core';
+import { GAME_CATEGORIES, MAX_MONTHS } from './chesscom';
+
+export * from './chesscom';
 
 export const USERNAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 export const MAX_GAMES_PER_JOB = 100;
@@ -54,3 +57,12 @@ export type ApiError = { error: string };
 
 export const progressFraction = (p: JobProgress | null): number =>
   p && p.total > 0 ? Math.min(1, (p.done + p.inFlight) / p.total) : 0;
+
+/** Query string of GET /v1/players/:username/games */
+export const GamesQuerySchema = z.object({
+  timeClass: z.enum(GAME_CATEGORIES).default('blitz'),
+  months: z.coerce.number().int().min(1).max(MAX_MONTHS).default(6),
+});
+
+/** `?fresh=1` skips the server's cache for this request. */
+export const FreshQuerySchema = z.object({ fresh: z.enum(['1', 'true']).optional() });

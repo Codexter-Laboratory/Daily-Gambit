@@ -18,6 +18,15 @@ const Env = z.object({
   ENGINES_PER_JOB: z.coerce.number().int().min(1).max(16).default(Math.max(1, Math.min(4, cpus().length))),
   /** Jobs the worker runs at the same time. */
   JOB_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(1),
+  /** Trust X-Forwarded-For for the client address. Only enable behind a proxy you control, or clients can fake their address. */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** New analysis jobs one client address may start per UTC day. */
+  DAILY_JOB_LIMIT: z.coerce.number().int().min(1).default(40),
+  /** Jobs allowed to wait in the queue. Beyond this the API answers 503 instead of piling up work. */
+  MAX_QUEUED_JOBS: z.coerce.number().int().min(1).default(50),
   /** Run the queue worker inside the API process. Convenient locally; run `worker.ts` separately in production. */
   EMBED_WORKER: z
     .enum(['true', 'false'])

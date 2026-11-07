@@ -2,6 +2,8 @@ import { QueueEvents } from 'bullmq';
 import { createPrisma } from './db.js';
 import type { Config } from './config.js';
 import { createAnalysisQueue, createRedis, QUEUE_NAME } from './queue/queue.js';
+import { ChessComHttp } from './services/chessComHttp.js';
+import { ChessComClient } from './services/chesscom.js';
 import { AnalysisRepo } from './services/repo.js';
 import type { Deps } from './server.js';
 
@@ -22,6 +24,7 @@ export function createDeps(config: Config): Deps & { close(): Promise<void> } {
     queue,
     queueEvents,
     repo: new AnalysisRepo(prisma),
+    chessCom: new ChessComClient(new ChessComHttp(redis)),
     async close() {
       await queueEvents.close();
       await queue.close();

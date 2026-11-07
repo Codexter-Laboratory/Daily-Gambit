@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { CreateJobSchema, MAX_GAMES_PER_JOB, USERNAME_RE, type CreateJobResponse, type JobEvent, type JobProgress, type JobStatus, type StoredAnalysisResponse } from '@daily-gambit/contracts';
+import { HttpError, secondsUntilUtcMidnight } from '../errors.js';
 import { CANCELLED } from '../queue/queue.js';
 import { cancelJob, createOrReuseJob, getJobStatus } from '../services/jobs.js';
 import type { Deps } from '../server.js';
@@ -10,13 +11,34 @@ const IdParams = z.object({ id: z.string().min(1).max(100) });
 const UserParams = z.object({ username: z.string().regex(USERNAME_RE, 'Invalid Chess.com username.') });
 const ListQuery = z.object({ limit: z.coerce.number().int().min(1).max(500).default(MAX_GAMES_PER_JOB) });
 
+/**
+ * Protection against work piling up. This API has no logins, so the limits are by client address:
+ * the queue itself is capped, and each address may start a fixed number of new jobs per day.
+ */
+async function enforceLimits({ queue, redis, config }: Deps, ip: string): Promise<void> {
+  if ((await queue.getWaitingCount()) >= config.MAX_QUEUED_JOBS) {
+    throw new HttpError(503, 'The analysis queue is full right now. Please try again in a few minutes.', { 'Retry-After': '60' });
+  }
+  const key = `analysis:quota:${ip}:${new Date().toISOString().slice(0, 10)}`;
+  const used = await redis.incr(key);
+  if (used === 1) await redis.expire(key, 86_400 + 60);
+  if (used > config.DAILY_JOB_LIMIT) {
+    throw new HttpError(429, 'You have reached the daily analysis limit. Please try again tomorrow.', { 'Retry-After': String(secondsUntilUtcMidnight()) });
+  }
+}
+
 export function registerAnalysisRoutes(app: FastifyInstance, deps: Deps) {
   const { queue, queueEvents, repo, config } = deps;
 
   /** Start an analysis. Answers at once; progress comes from the status or the event stream. */
   app.post('/v1/analysis/jobs', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const input = CreateJobSchema.parse(req.body);
-    const result: CreateJobResponse = await createOrReuseJob(deps, { ...input, username: input.username.toLowerCase() });
+    const username = input.username.toLowerCase();
+    // Refuse a player that does not exist now, with a clear answer, instead of failing a queued job later.
+    await deps.chessCom.profile(username);
+    const result: CreateJobResponse = await createOrReuseJob(deps, { ...input, username }, async () => {
+      await enforceLimits(deps, req.ip);
+    });
     return reply.code(202).send(result);
   });
 
