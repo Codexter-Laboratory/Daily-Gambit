@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { PlayerDashboard } from '../../../features/player-dashboard';
 import { PlayerProfileSection, PlayerProfileUnavailable } from '../../../features/player-dashboard/PlayerProfileSection';
-import { getOnlineStatus, getProfile } from '../../../features/player-dashboard/server';
+import { getProfile } from '../../../features/player-dashboard/server';
 import { USERNAME_RE, normalizeUsername } from '../../../lib/username';
 
 // ISR: the first request for a player renders the page on the server and caches the HTML.
@@ -45,9 +45,8 @@ export default async function PlayerPage({ params }: PageProps) {
   // proxy.ts already redirects non-canonical URLs, this is the fallback.
   if (raw !== username) redirect(`/player/${username}`);
 
-  // Two independent requests started together: no waterfall. getProfile is the same
-  // memoized call that generateMetadata already made, so it does not hit Chess.com twice.
-  const [result, onlineStatus] = await Promise.all([getProfile(username), getOnlineStatus(username)]);
+  // getProfile is the same memoized call that generateMetadata already made, so it does not hit the API twice.
+  const result = await getProfile(username);
   // Renders not-found.tsx. Note: with ISR, Next 16 caches this page and serves it with status 200 plus
   // a noindex tag, not a 404 status, so crawlers skip it but the status code is not a reliable signal.
   if (result.status === 'missing') notFound();
@@ -59,7 +58,7 @@ export default async function PlayerPage({ params }: PageProps) {
       username={username}
       profile={
         result.status === 'ok' ? (
-          <PlayerProfileSection profile={result.profile} onlineStatus={onlineStatus} />
+          <PlayerProfileSection profile={result.profile} />
         ) : (
           <PlayerProfileUnavailable username={username} />
         )

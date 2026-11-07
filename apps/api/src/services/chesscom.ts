@@ -8,7 +8,6 @@ import type {
   CurrentGamesResponse,
   GameCategory,
   GamesSeries,
-  OnlineStatus,
   PlayerClubsResponse,
   PlayerMatchesResponse,
   PlayerProfile,
@@ -44,7 +43,6 @@ export interface GamesSource {
 /** What the read endpoints need. A fake in route tests. */
 export interface PlayerData extends GamesSource {
   profile(username: string, o?: Fresh): Promise<PlayerProfile>;
-  onlineStatus(username: string, o?: Fresh): Promise<OnlineStatus>;
   stats(username: string, o?: Fresh): Promise<ChessComStats>;
   clubs(username: string, o?: Fresh): Promise<PlayerClubsResponse>;
   tournaments(username: string, o?: Fresh): Promise<PlayerTournamentsResponse>;
@@ -98,9 +96,6 @@ export class ChessComClient implements PlayerData {
 
   profile(username: string, o: Fresh = {}) {
     return this.http.getJson<PlayerProfile>(this.player(username), { ttl: TTL.profile, ...o });
-  }
-  onlineStatus(username: string, o: Fresh = {}) {
-    return this.http.getJson<OnlineStatus>(this.player(username, '/is-online'), { ttl: TTL.live, ...o });
   }
   stats(username: string, o: Fresh = {}) {
     return this.http.getJson<ChessComStats>(this.player(username, '/stats'), { ttl: TTL.live, ...o });

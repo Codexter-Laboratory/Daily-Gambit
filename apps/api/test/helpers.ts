@@ -5,7 +5,7 @@ import { loadConfig } from '../src/config.js';
 import { StockfishProcess } from '../src/engine/stockfishProcess.js';
 import { QUEUE_NAME, createRedis, type AnalysisJobData } from '../src/queue/queue.js';
 import { createProcessor } from '../src/queue/processor.js';
-import type { ChessComStats, CurrentGamesResponse, GamesSeries, OnlineStatus, PlayerClubsResponse, PlayerMatchesResponse, PlayerProfile, PlayerTournamentsResponse } from '@daily-gambit/contracts';
+import type { ChessComStats, CurrentGamesResponse, GamesSeries, PlayerClubsResponse, PlayerMatchesResponse, PlayerProfile, PlayerTournamentsResponse } from '@daily-gambit/contracts';
 import { ChessComError, type AnalysisGame, type PlayerData } from '../src/services/chesscom.js';
 import { buildServer } from '../src/server.js';
 
@@ -57,10 +57,6 @@ export class FakePlayers implements PlayerData {
   async profile(username: string, o: { fresh?: boolean } = {}): Promise<PlayerProfile> {
     this.check(username, o.fresh);
     return { '@id': `x/${username}`, url: `https://www.chess.com/member/${username}`, username, player_id: 1, status: 'basic', country: 'x', joined: 1, last_online: 2, followers: 3, is_streamer: false };
-  }
-  async onlineStatus(username: string, o: { fresh?: boolean } = {}): Promise<OnlineStatus> {
-    this.check(username, o.fresh);
-    return { online: true };
   }
   async stats(username: string, o: { fresh?: boolean } = {}): Promise<ChessComStats> {
     this.check(username, o.fresh);

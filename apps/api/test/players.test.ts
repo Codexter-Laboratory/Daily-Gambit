@@ -29,10 +29,6 @@ describe('player read endpoints', () => {
     expect(ok(res.json())).toBe(true);
   });
 
-  it('/online returns the online status', async () => {
-    expect((await get('/v1/players/hikaru/online')).json()).toEqual({ online: true });
-  });
-
   it('/games returns the series and validates its query', async () => {
     const ok = await get('/v1/players/hikaru/games?timeClass=rapid&months=12');
     expect(ok.json()).toMatchObject({ username: 'hikaru', timeClass: 'rapid', months: 12, missingMonths: 0 });

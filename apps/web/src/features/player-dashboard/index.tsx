@@ -12,22 +12,17 @@ import { ToMoveGamesSection } from './ToMoveGamesSection';
 import { ClubsSection } from './ClubsSection';
 import { TournamentsSection } from './TournamentsSection';
 import { TeamMatchesSection } from './TeamMatchesSection';
-import { SnapshotsTable } from './SnapshotsTable';
 import { GamesFilters } from './GamesFilters';
 import { AnalysisHub } from '../analysis';
 import { ActivityHeatmap, GameEndings, OpponentStrength, ResultsByColor, TopOpenings } from './GameInsights';
 
-// The two charts use Recharts, the heaviest dependency. next/dynamic keeps Recharts out of the
-// first bundle: the page paints first and the charts arrive in one lazy chunk (both import from
-// ./Charts). ssr: false because charts need the browser to measure their size, so the server
-// sends the skeleton and the client swaps the chart in.
+// The chart uses Recharts, the heaviest dependency. next/dynamic keeps Recharts out of the
+// first bundle: the page paints first and the chart arrives in a lazy chunk. ssr: false because
+// charts need the browser to measure their size, so the server sends the skeleton and the client
+// swaps the chart in.
 const GamesRatingChart = dynamic(() => import('./Charts').then((m) => m.GamesRatingChart), {
   ssr: false,
   loading: () => <LoadingState title="Rating history" message="Loading chart…" rows={5} />,
-});
-const PuzzleRushChart = dynamic(() => import('./Charts').then((m) => m.PuzzleRushChart), {
-  ssr: false,
-  loading: () => <LoadingState title="Puzzle Rush" message="Loading chart…" rows={5} />,
 });
 
 type PlayerDashboardProps = {
@@ -40,8 +35,6 @@ type PlayerDashboardProps = {
 export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
   const {
     error,
-    data,
-    dashboardLoading,
     statsLoading,
     gamesLoading,
     isRefreshing,
@@ -61,7 +54,6 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
     setMonths,
     games,
     statsSummary,
-    puzzleRushSummary,
     ratingChart,
     loadGames,
     refreshAll,
@@ -71,7 +63,7 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
   const refreshAllRef = useRef(refreshAll);
   refreshAllRef.current = refreshAll;
   useEffect(() => {
-    refreshAllRef.current(username, { withIngest: true });
+    refreshAllRef.current(username);
   }, [username]);
 
   // Searching for the player already on screen is the Refresh button. Any other name is checked
@@ -84,7 +76,7 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
     search: showPlayer,
   } = usePlayerSearch({
     currentUsername: username,
-    onRefresh: (name) => refreshAll(name, { withIngest: true, forceFresh: true }),
+    onRefresh: (name) => refreshAll(name, { forceFresh: true }),
   });
 
   const handleGamesFilterChange = (nextTimeClass: typeof timeClass, nextMonths: number) => {
@@ -141,21 +133,8 @@ export function PlayerDashboard({ username, profile }: PlayerDashboardProps) {
       </section>
 
       <details className="moreDetails">
-        <summary className="moreSummary">More: Puzzle Rush, live games, clubs and tournaments</summary>
+        <summary className="moreSummary">More: live games, clubs and tournaments</summary>
         <div className="stack moreBody">
-        <section className="stack" aria-label="Puzzle Rush">
-          <div className="sectionHead">
-            <h2 className="sectionTitle">Puzzle Rush</h2>
-          </div>
-          <div className="grid2">
-            <PuzzleRushChart
-              puzzleRushSummary={puzzleRushSummary}
-              data={data}
-              loading={statsLoading || dashboardLoading}
-            />
-            <SnapshotsTable points={data?.puzzleRush?.points ?? []} loading={dashboardLoading} />
-          </div>
-        </section>
 
         <ToMoveGamesSection
           toMoveGamesLoading={toMoveGamesLoading}

@@ -1,119 +1,69 @@
-import type { DashboardResponse, GamesData, GamesTimeClass } from './types';
-import { ingestSnapshot as ingestSnapshotAction, refreshPlayer } from './actions';
+import type {
+  ClubsResponse,
+  CurrentGamesPayload,
+  GamesSeries,
+  MatchesResponse,
+  PlayerProfile,
+  ProfileResponse,
+  StatsResponse,
+  TournamentsResponse,
+} from '@daily-gambit/contracts';
+import { ApiRequestError, apiRequest, withFresh } from '../../lib/api';
+import type { GamesTimeClass } from './types';
 
-/** An API call that returned an error status. Keeps the status so callers can tell 404 from 5xx. */
-export class ApiRequestError extends Error {
-  constructor(
-    readonly status: number,
-    message: string
-  ) {
-    super(message);
-    this.name = 'ApiRequestError';
-  }
+export { ApiRequestError };
+
+type Options = { fresh?: boolean };
+
+const player = (username: string, path: string) => `/v1/players/${encodeURIComponent(username)}${path}`;
+
+// Every fetcher throws ApiRequestError on failure, so a network error or a Chess.com outage is
+// never mistaken for "username not found".
+export async function fetchStats(username: string, { fresh }: Options = {}) {
+  return (await apiRequest<StatsResponse>(withFresh(player(username, '/stats'), fresh))).stats;
 }
 
-/**
- * GET a JSON endpoint. The body is read defensively: a gateway timeout or a crashed route can
- * return HTML, and calling res.json() on that used to throw a confusing parse error.
- * Throws ApiRequestError for any non-2xx response.
- */
-async function getJson(url: string, fallbackMessage: string): Promise<any> {
-  const res = await fetch(url);
-  let json: any = null;
-  try {
-    json = await res.json();
-  } catch {
-    // not JSON: keep null
-  }
-  if (!res.ok) throw new ApiRequestError(res.status, json?.error || fallbackMessage);
-  return json;
+export async function fetchProfile(username: string, { fresh }: Options = {}): Promise<PlayerProfile> {
+  return (await apiRequest<ProfileResponse>(withFresh(player(username, '/profile'), fresh))).profile;
 }
 
-
-export async function fetchDashboard(username: string): Promise<DashboardResponse | null> {
-  const json = await getJson(`/api/dashboard?username=${encodeURIComponent(username)}`, 'Failed to load dashboard.');
-  return json ?? null;
+export async function fetchClubs(username: string, { fresh }: Options = {}) {
+  return (await apiRequest<ClubsResponse>(withFresh(player(username, '/clubs'), fresh))).clubs;
 }
 
-export async function fetchStats(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/stats?username=${encodeURIComponent(username)}`, 'Failed to load stats.');
-  return json?.stats ?? null;
+export async function fetchTournaments(username: string, { fresh }: Options = {}) {
+  return (await apiRequest<TournamentsResponse>(withFresh(player(username, '/tournaments'), fresh))).tournaments;
 }
 
-export async function fetchProfile(username: string): Promise<unknown | null> {
-  // Throws ApiRequestError on failure. Before, every failure returned null, so a network error
-  // or a Chess.com outage was reported as "username not found".
-  const json = await getJson(
-    `/api/profile?username=${encodeURIComponent(username)}`,
-    'Failed to load profile.'
-  );
-  return json?.profile ?? null;
+export async function fetchMatches(username: string, { fresh }: Options = {}) {
+  return (await apiRequest<MatchesResponse>(withFresh(player(username, '/matches'), fresh))).matches;
 }
 
-export async function fetchClubs(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/clubs?username=${encodeURIComponent(username)}`, 'Failed to load clubs.');
-  return json?.clubs ?? null;
+export async function fetchCurrentGames(username: string, { fresh }: Options = {}) {
+  return (await apiRequest<CurrentGamesPayload>(withFresh(player(username, '/current-games'), fresh))).currentGames;
 }
 
-export async function fetchTournaments(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/tournaments?username=${encodeURIComponent(username)}`, 'Failed to load tournaments.');
-  return json?.tournaments ?? null;
+/** The games behind the rating, activity and results charts. */
+export async function fetchGames(username: string, timeClass: GamesTimeClass, months: number, { fresh }: Options = {}): Promise<GamesSeries> {
+  return apiRequest<GamesSeries>(withFresh(`${player(username, '/games')}?timeClass=${encodeURIComponent(timeClass)}&months=${months}`, fresh));
 }
 
-export async function fetchMatches(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/matches?username=${encodeURIComponent(username)}`, 'Failed to load matches.');
-  return json?.matches ?? null;
-}
-
-export async function fetchCurrentGames(username: string): Promise<unknown | null> {
-  const json = await getJson(`/api/current-games?username=${encodeURIComponent(username)}`, 'Failed to load current games.');
-  return json?.currentGames ?? null;
-}
-
+/** The games where it is the given player's turn to move. */
 export function filterToMoveGames(currentGamesData: unknown, username: string): { games: unknown[] } {
   const data = currentGamesData as { games?: unknown[] } | null;
   if (!data?.games) return { games: [] };
 
-  const myTurnGames = data.games.filter((game: unknown) => {
-    const g = game as Record<string, unknown>;
-    const whiteUrl = typeof g.white === 'string' ? g.white : (g.white as { url?: string })?.url;
-    const blackUrl = typeof g.black === 'string' ? g.black : (g.black as { url?: string })?.url;
-    const whiteUsername = (whiteUrl ?? '').split('/').pop() || '';
-    const blackUsername = (blackUrl ?? '').split('/').pop() || '';
-    const currentUsername = username.trim();
-    const isUserWhite = whiteUsername === currentUsername;
-    const isUserBlack = blackUsername === currentUsername;
-    const turn = String(g.turn ?? '');
-    if (isUserWhite && turn === 'white') return true;
-    if (isUserBlack && turn === 'black') return true;
-    return false;
-  });
-
-  return { games: myTurnGames };
-}
-
-export async function fetchGames(
-  username: string,
-  timeClass: GamesTimeClass,
-  months: number
-): Promise<GamesData & { missingMonths: number }> {
-  const json = await getJson(
-    `/api/games?username=${encodeURIComponent(username)}&timeClass=${encodeURIComponent(
-      timeClass
-    )}&months=${encodeURIComponent(String(months))}`,
-    'Failed to load games.'
-  );
+  const me = username.trim().toLowerCase();
+  const lastSegment = (value: unknown): string => {
+    const url = typeof value === 'string' ? value : (value as { url?: string } | undefined)?.url;
+    return (url ?? '').split('/').pop()?.toLowerCase() ?? '';
+  };
 
   return {
-    // Already validated and shaped server-side by toGameRecord().
-    points: Array.isArray(json?.points) ? json.points : [],
-    summary: json?.summary ?? { games: 0, win: 0, loss: 0, draw: 0 },
-    missingMonths: Number(json?.missingMonths ?? 0),
+    games: data.games.filter((game) => {
+      const g = game as Record<string, unknown>;
+      const turn = String(g.turn ?? '');
+      return (lastSegment(g.white) === me && turn === 'white') || (lastSegment(g.black) === me && turn === 'black');
+    }),
   };
-}
-
-/** Saves today's snapshot with a Server Action (a POST), not a GET. forceFresh also expires the player's cached data. */
-export async function ingestSnapshot(username: string, options?: { forceFresh?: boolean }): Promise<void> {
-  const result = options?.forceFresh ? await refreshPlayer(username) : await ingestSnapshotAction(username);
-  if (!result.ok) throw new Error(result.error);
 }

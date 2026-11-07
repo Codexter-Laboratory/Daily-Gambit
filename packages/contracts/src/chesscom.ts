@@ -21,8 +21,6 @@ export type PlayerProfile = {
   fide?: number;
 };
 
-export type OnlineStatus = { online: boolean };
-
 export type PlayerClub = {
   '@id': string;
   name: string;

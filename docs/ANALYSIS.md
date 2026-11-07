@@ -4,9 +4,9 @@ Everything here lives in `packages/core` (`@daily-gambit/core`) as plain TypeScr
 
 ## The pipeline
 
-With the analysis API, steps 1 to 3 run in the API's worker (`apps/api/src/queue/processor.ts`) and results are stored in Postgres; the rest of this page is the same in both modes. In browser mode:
+Steps 1 to 3 run in the API's worker (`apps/api/src/queue/processor.ts`) and results are stored in Postgres.
 
-1. `/api/analysis-games` returns the player's most recent standard-chess games with their PGN (newest archive first, optional time-control filter, at most 100).
+1. The worker asks Chess.com (through the API's cached client) for the player's most recent standard-chess games with their PGN (newest archive first, optional time-control filter, at most 100).
 2. The browser starts Stockfish 17.1 (lite, single thread) in a Web Worker and evaluates **every position** of each game at depth 12, one at a time (`analyzeGame`). The final position of a finished game is scored from the result, with no engine call.
 3. Each game is stored in IndexedDB as soon as it finishes, so stopping or reloading loses nothing.
 4. All reports are pure functions over the stored games.
@@ -63,17 +63,11 @@ A move other than the engine's first choice is accepted when, after it, you keep
 
 ## Where results are stored
 
-With the API, in Postgres, one row per player and game, with an analysis version (`SCHEMA_VERSION`). In browser mode, in IndexedDB:
-
-| Key | Contents | Version |
-| --- | --- | --- |
-| `dg:analysis:<username>` | Analysed games (moves, evaluations, errors, clocks) | 2 |
-| `dg:training:<username>` | Which puzzles were solved or failed, and when | 1 |
-
-When the stored shape changes the version is bumped and older entries are ignored (games are analysed again).
+- **Analysed games** are in the API's Postgres, one row per player and game, with an analysis version (`SCHEMA_VERSION` in `apps/api/src/services/repo.ts`). When the analysis changes, bump it and older rows are ignored, so those games are analysed again.
+- **Training progress** (which puzzles were solved or failed, and when) is in the browser's IndexedDB under `dg:training:<username>`, version 1.
 
 ## Known limits
 
 - Depth 12 on a lite single-thread engine is fast but not as deep as a desktop Stockfish. Mistake counts are a good guide, not a verdict.
 - Standard chess only. Variants are skipped.
-- Training progress (solved and failed puzzles, the streak) is still stored in the browser, so it does not follow you to another device. Analysis results do when the API is used.
+- Training progress (solved and failed puzzles, the streak) is stored in the browser, so it does not follow you to another device. Analysis results do.

@@ -1,40 +1,7 @@
-import type { GameRecord } from '@daily-gambit/core';
+import type { GameCategory, GamesSeries } from '@daily-gambit/contracts';
 
-export type DateISO = string;
+/** The categories the games filter offers: standard time controls and Chess.com's variants. */
+export type GamesTimeClass = GameCategory;
 
-export type PuzzleRushPoint = {
-  date: DateISO;
-  attemptsTotal: number | null;
-  scoreTotal: number | null;
-  bestScore: number | null;
-  attemptsDelta: number | null;
-  scoreDelta: number | null;
-};
-
-export type GamesTimeClass =
-  | 'bullet'
-  | 'blitz'
-  | 'rapid'
-  | 'daily'
-  | 'chess960'
-  | 'bughouse'
-  | 'crazyhouse'
-  | 'kingofthehill'
-  | 'threecheck'
-  | 'atomic';
-
-export type DashboardResponse = {
-  username: string;
-  puzzleRush: {
-    points: PuzzleRushPoint[];
-    streak: { current: number; best: number; endingDate: DateISO | null };
-  };
-};
-
-export type GamesData = {
-  /** Every game in the selected category and period, oldest first. All game charts use these. */
-  points: GameRecord[];
-  summary: { games: number; win: number; loss: number; draw: number };
-  /** Months whose archive could not be loaded; 0 means complete. */
-  missingMonths?: number;
-};
+/** The games series as the dashboard uses it (see GamesSeries in the contracts package). */
+export type GamesData = Pick<GamesSeries, 'points' | 'summary' | 'missingMonths'>;

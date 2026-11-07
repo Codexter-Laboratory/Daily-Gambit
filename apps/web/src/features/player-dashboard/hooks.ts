@@ -1,11 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { DashboardResponse, GamesTimeClass } from './types';
+import type { GamesTimeClass } from './types';
 import * as services from './services';
-import {
-  computePuzzleRushSummary,
-  computeRatingChart,
-  computeStatsSummary,
-} from './derived';
+import { computeRatingChart, computeStatsSummary } from './derived';
 import { toFriendlyErrorMessage } from '../../utils/errorMessage';
 import { normalizeUsername } from '../../lib/username';
 
@@ -17,7 +13,6 @@ import { normalizeUsername } from '../../lib/username';
 export function usePlayerDashboard(username: string) {
   const [isRefreshing, setIsRefreshing] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<DashboardResponse | null>(null);
   const [stats, setStats] = useState<unknown | null>(null);
   const [clubs, setClubs] = useState<unknown | null>(null);
   const [tournaments, setTournaments] = useState<unknown | null>(null);
@@ -28,7 +23,6 @@ export function usePlayerDashboard(username: string) {
   const [games, setGames] = useState<Awaited<ReturnType<typeof services.fetchGames>> | null>(null);
 
   // Start in the loading state, so the server-rendered HTML already shows skeletons.
-  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [clubsLoading, setClubsLoading] = useState(true);
   const [tournamentsLoading, setTournamentsLoading] = useState(true);
@@ -63,17 +57,12 @@ export function usePlayerDashboard(username: string) {
     []
   );
 
-  const loadDashboard = useCallback(
-    (nextUsername: string) => runLoader(setDashboardLoading, setData, () => services.fetchDashboard(nextUsername)),
-    [runLoader]
-  );
-
   const loadGames = useCallback(
-    async (nextUsername: string, nextTimeClass: GamesTimeClass, nextMonths: number) => {
+    async (nextUsername: string, nextTimeClass: GamesTimeClass, nextMonths: number, fresh = false) => {
       const request = ++gamesRequest.current;
       setGamesLoading(true);
       try {
-        const result = await services.fetchGames(nextUsername, nextTimeClass, nextMonths);
+        const result = await services.fetchGames(nextUsername, nextTimeClass, nextMonths, { fresh });
         if (request === gamesRequest.current) setGames(result ?? null);
       } catch (e) {
         if (request === gamesRequest.current) {
@@ -88,7 +77,6 @@ export function usePlayerDashboard(username: string) {
   );
 
   const setAllLoading = useCallback((value: boolean) => {
-    setDashboardLoading(value);
     setStatsLoading(value);
     setClubsLoading(value);
     setTournamentsLoading(value);
@@ -98,17 +86,15 @@ export function usePlayerDashboard(username: string) {
   }, []);
 
   /**
-   * Loads every section for one player.
-   *  - withIngest: save today's Puzzle Rush snapshot first. Only the snapshot-based dashboard
-   *    has to wait for it, the other sections load alongside.
-   *  - forceFresh: the Refresh button. Also drops the cached Chess.com data for this player, and
-   *    every read waits for that, or it would get the old data.
+   * Loads every section for one player, all at once.
+   *  - forceFresh: the Refresh button. Asks the API to skip its cache for these reads.
    * The same player keeps its data on screen while it refreshes.
    */
   const refreshAll = useCallback(
-    async (nextUsername: string, options?: { withIngest?: boolean; forceFresh?: boolean }) => {
+    async (nextUsername: string, options?: { forceFresh?: boolean }) => {
       const clean = normalizeUsername(nextUsername);
       if (!clean) return;
+      const fresh = options?.forceFresh ?? false;
 
       const gen = ++generation.current;
       gamesRequest.current++;
@@ -117,26 +103,18 @@ export function usePlayerDashboard(username: string) {
       setIsRefreshing(true);
       setAllLoading(true);
 
-      const ingest = options?.withIngest
-        ? services.ingestSnapshot(clean, { forceFresh: options.forceFresh }).catch(() => {
-            // Continue loading read endpoints even if ingest fails.
-          })
-        : Promise.resolve();
-      const ready = options?.forceFresh ? ingest : Promise.resolve();
-
       await Promise.allSettled([
-        ingest.then(() => loadDashboard(clean)),
-        ready.then(() => runLoader(setStatsLoading, setStats, () => services.fetchStats(clean))),
-        ready.then(() => runLoader(setClubsLoading, setClubs, () => services.fetchClubs(clean))),
-        ready.then(() => runLoader(setTournamentsLoading, setTournaments, () => services.fetchTournaments(clean))),
-        ready.then(() => runLoader(setMatchesLoading, setMatches, () => services.fetchMatches(clean))),
-        ready.then(() => runLoader(setCurrentGamesLoading, setCurrentGames, () => services.fetchCurrentGames(clean))),
-        ready.then(() => loadGames(clean, timeClass, months)),
+        runLoader(setStatsLoading, setStats, () => services.fetchStats(clean, { fresh })),
+        runLoader(setClubsLoading, setClubs, () => services.fetchClubs(clean, { fresh })),
+        runLoader(setTournamentsLoading, setTournaments, () => services.fetchTournaments(clean, { fresh })),
+        runLoader(setMatchesLoading, setMatches, () => services.fetchMatches(clean, { fresh })),
+        runLoader(setCurrentGamesLoading, setCurrentGames, () => services.fetchCurrentGames(clean, { fresh })),
+        loadGames(clean, timeClass, months, fresh),
       ]);
 
       if (gen === generation.current) setIsRefreshing(false);
     },
-    [timeClass, months, runLoader, loadDashboard, loadGames, setAllLoading]
+    [timeClass, months, runLoader, loadGames, setAllLoading]
   );
 
   const toMoveGames = useMemo(
@@ -145,14 +123,11 @@ export function usePlayerDashboard(username: string) {
   );
 
   const statsSummary = useMemo(() => computeStatsSummary(stats), [stats]);
-  const puzzleRushSummary = useMemo(() => computePuzzleRushSummary(statsSummary), [statsSummary]);
   const ratingChart = useMemo(() => computeRatingChart(games), [games]);
 
   return {
     isRefreshing,
     error,
-    data,
-    dashboardLoading,
     statsLoading,
     clubsLoading,
     clubs,
@@ -171,7 +146,6 @@ export function usePlayerDashboard(username: string) {
     games,
     gamesLoading,
     statsSummary,
-    puzzleRushSummary,
     ratingChart,
     loadGames,
     refreshAll,

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { CreateJobSchema, MAX_GAMES_PER_JOB, USERNAME_RE, type CreateJobResponse, type JobEvent, type JobProgress, type JobStatus, type StoredAnalysisResponse } from '@daily-gambit/contracts';
 import { HttpError, secondsUntilUtcMidnight } from '../errors.js';
+import { originMatcher } from '../cors.js';
 import { CANCELLED } from '../queue/queue.js';
 import { cancelJob, createOrReuseJob, getJobStatus } from '../services/jobs.js';
 import type { Deps } from '../server.js';
@@ -29,6 +30,7 @@ async function enforceLimits({ queue, redis, config }: Deps, ip: string): Promis
 
 export function registerAnalysisRoutes(app: FastifyInstance, deps: Deps) {
   const { queue, queueEvents, repo, config } = deps;
+  const isAllowedOrigin = originMatcher(config.WEB_ORIGIN);
 
   /** Start an analysis. Answers at once; progress comes from the status or the event stream. */
   app.post('/v1/analysis/jobs', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
@@ -61,13 +63,14 @@ export function registerAnalysisRoutes(app: FastifyInstance, deps: Deps) {
     const { id } = IdParams.parse(req.params);
     reply.hijack();
     const raw = reply.raw;
+    const origin = req.headers.origin;
     raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      // hijack() skips the CORS plugin, so the header is set here.
-      'Access-Control-Allow-Origin': config.WEB_ORIGIN,
+      // hijack() skips the CORS plugin, so the header is set here, for an allowed origin only.
+      ...(origin && isAllowedOrigin(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
     });
 
     let closed = false;

@@ -8,7 +8,6 @@ import {
   type CurrentGamesPayload,
   type GamesSeries,
   type MatchesResponse,
-  type OnlineStatus,
   type ProfileResponse,
   type StatsResponse,
   type TournamentsResponse,
@@ -32,12 +31,6 @@ export function registerPlayerRoutes(app: FastifyInstance, { chessCom }: Deps) {
   app.get('/v1/players/:username/profile', async (req, reply) => {
     const { username, fresh } = read(req);
     const body: ProfileResponse = { username, profile: await chessCom.profile(username, { fresh }) };
-    return send(reply, body);
-  });
-
-  app.get('/v1/players/:username/online', async (req, reply) => {
-    const { username, fresh } = read(req);
-    const body: OnlineStatus = await chessCom.onlineStatus(username, { fresh });
     return send(reply, body);
   });
 

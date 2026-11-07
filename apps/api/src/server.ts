@@ -7,6 +7,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { Redis } from 'ioredis';
 import { ZodError } from 'zod';
 import type { Config } from './config.js';
+import { originMatcher } from './cors.js';
 import { HttpError } from './errors.js';
 import type { AnalysisJobData } from './queue/queue.js';
 import { registerAnalysisRoutes } from './routes/analysis.js';
@@ -44,7 +45,13 @@ export async function buildServer(deps: Deps): Promise<FastifyInstance> {
     reply.header('x-content-type-options', 'nosniff');
   });
 
-  await app.register(cors, { origin: config.WEB_ORIGIN, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] });
+  const isAllowedOrigin = originMatcher(config.WEB_ORIGIN);
+  await app.register(cors, {
+    // Requests with no Origin (curl, server-to-server) are not browser cross-origin calls; they pass.
+    origin: (origin, callback) => callback(null, !origin || isAllowedOrigin(origin)),
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    exposedHeaders: ['x-request-id', 'retry-after'],
+  });
   // A generous global limit stops a runaway client; the job endpoint has a tighter one of its own.
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
 
