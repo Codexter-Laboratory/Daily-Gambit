@@ -10,7 +10,7 @@ The Fix My Chess repository was **not changed**. It can be archived once this is
 | --- | --- |
 | Home screen: enter a username | Existing search box and `/player/<username>` |
 | Profile check, "user not found" message | Existing username validation and not-found page |
-| `fetchRecentGames` (last 3 months, retry on 429) | `fetchRecentAnalysisGames` (newest first, up to 100 games, time-control filter), behind `/api/analysis-games` with Chess.com caching |
+| `fetchRecentGames` (last 3 months, retry on 429) | `ChessComClient.recentGames` in the API (newest first, up to 100 games, time-control filter), with the API's shared Chess.com cache |
 | `calculateLeaks`, `getWorstOpenings` | `openingReport` (ranked by points lost, split by colour) and the opening explorer |
 | `blunderAnalyzer`, `useBlunderDetector` | `analyzeGame`, one function used for every game |
 | `StockfishEngine` (WebView), `webStockfish` (Stockfish 10 from a CDN) | `stockfishClient`: Stockfish 17.1, self-hosted, in a Web Worker |

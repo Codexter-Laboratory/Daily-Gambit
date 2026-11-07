@@ -1,209 +1,151 @@
 # Architecture
 
-How Daily Gambit is put together. For setup and deployment see the [README](README.md), for the rendering and caching details see [docs/RENDERING.md](docs/RENDERING.md).
+How Daily Gambit is put together. For setup and deployment see the [README](README.md), for the rendering details see [docs/RENDERING.md](docs/RENDERING.md), for the API see [docs/API.md](docs/API.md), and for how each analysis number is produced see [docs/ANALYSIS.md](docs/ANALYSIS.md).
 
 Daily Gambit is an npm workspace with two services and two shared packages:
 
 ```
-apps/web            Next.js (App Router): pages, Server Components, route handlers, Server Actions, Puzzle Rush
-apps/api            Fastify API and BullMQ worker: queues and runs the engine analysis, stores the results
-packages/core       the analysis logic, plain TypeScript, used by the web app and the API
+apps/web            Next.js (App Router): the frontend. Pages, Server Components, no database, no route handlers
+apps/api            Fastify API and BullMQ worker: all Chess.com access, and the engine analysis
+packages/core       the analysis logic and game-record code, plain TypeScript, used by both
 packages/contracts  the API's request schemas and response types, used by both
 ```
 
-The web app is the product: it shows the account dashboard and the analysis. The **analysis API** does the heavy work (Stockfish over a player's games) in a background worker and stores the results in its own Postgres database. The two talk over HTTP and server-sent events (see [docs/API.md](docs/API.md) and [docs/BACKEND_SEPARATION.md](docs/BACKEND_SEPARATION.md)). If the web app has no `NEXT_PUBLIC_API_URL`, it falls back to running Stockfish in a Web Worker in the browser and keeping results in IndexedDB. How each number is produced is in [docs/ANALYSIS.md](docs/ANALYSIS.md). The paths below are relative to `apps/web` unless noted.
+**The web app is a pure frontend.** Everything it shows comes from the API over HTTP. It has no database, no route handlers and no Server Actions. **The API owns the data:** it reads Chess.com (with a shared cache), runs Stockfish in a background worker, and stores the analysis in its own Postgres.
 
 ```mermaid
 flowchart LR
   B[Browser]
-  subgraph Next["Next.js app (Vercel)"]
+  subgraph Web["apps/web (Vercel)"]
     P["proxy.ts<br/>redirects"]
     PG["/player/[username]<br/>Server Component, cached 60s"]
-    API["/api/* route handlers"]
-    SA["Server Actions"]
-    CR["/api/cron/snapshots"]
   end
-  CC[(Chess.com PubAPI)]
-  DB[(Postgres)]
-  SF["Stockfish WASM<br/>(Web Worker, fallback)"]
-  IDB[("IndexedDB<br/>training, and analysis<br/>in browser mode")]
-  subgraph ApiSvc["Analysis API (apps/api)"]
+  subgraph Api["apps/api"]
     AP["Fastify API"]
-    RD[("Redis<br/>BullMQ")]
+    RD[("Redis<br/>BullMQ + response cache")]
     WK["Worker<br/>Stockfish processes"]
     PD[("Postgres<br/>analysed games")]
   end
+  CC[(Chess.com PubAPI)]
+  SF["Stockfish WASM<br/>(Web Worker)"]
+  IDB[("IndexedDB<br/>training progress")]
   B --> P --> PG
-  B -- "fetch" --> API
-  B -- "POST" --> SA
-  PG --> CC
-  API --> CC
-  API --> DB
-  SA --> DB
-  SA --> CC
-  CR --> DB
-  CR --> CC
-  B -- "games with PGN" --> API
-  B --> SF
-  B --> IDB
-  B -- "jobs, SSE, results" --> AP
-  AP --> RD --> WK
+  PG -- "profile" --> AP
+  B -- "data, jobs, SSE" --> AP
+  AP --> RD
+  AP --> CC
+  AP --> PD
+  RD --> WK
   WK --> CC
   WK --> PD
-  AP --> PD
+  B --> SF
+  B --> IDB
 ```
+
+The browser also runs Stockfish, but only to check a puzzle answer that is not the engine's first choice (`TrainSection`). Training progress (solved puzzles, streak) is the one thing still stored in the browser.
 
 ## Folder structure
 
 ```
-src/
+apps/web/src/
 ├── proxy.ts                      redirects: /?u=name to /player/name, and /player/Name to the lowercase /player/name
 ├── app/
 │   ├── layout.tsx                header, footer, font (next/font), metadata template
 │   ├── page.tsx                  landing page (static)
 │   ├── globals.css               all styling
-│   ├── player/[username]/
-│   │   ├── page.tsx              player page (Server Component, ISR)
-│   │   ├── loading.tsx           skeleton while the page renders on the server
-│   │   ├── error.tsx             error boundary
-│   │   └── not-found.tsx         shown for an unknown or invalid username
-│   └── api/
-│       ├── profile, stats, clubs, tournaments, matches, current-games,
-│       │   games, dashboard      read endpoints the browser calls
-│       ├── analysis-games        recent games with PGN, for the engine analysis
-│       ├── online-status, to-move-games   exist but the UI does not call them
-│       └── cron/snapshots        daily job (Vercel Cron)
-├── features/player-dashboard/    account overview and games charts (see below)
-├── features/analysis/            engine analysis UI: hub with tabs, game review, puzzles, storage
+│   └── player/[username]/        page (Server Component, ISR), loading, error, not-found
+├── features/player-dashboard/    account overview and the games charts
+├── features/analysis/            analysis UI: hub with tabs, game review, puzzles, API client, training storage
 ├── components/                   small shared UI: Panel, StatCard, Tabs, TableScroll, SectionBoundary, ...
-├── lib/analysis/                 the analysis logic, plain TypeScript and unit tested (see docs/ANALYSIS.md)
-├── lib/                          server-side and shared logic, no React
-└── utils/errorMessage.ts         turns an error into a friendly message
-prisma/
-├── schema.prisma
-└── migrations/
-scripts/copy-engine.mjs           copies Stockfish WASM to public/engine on install (generated, not committed)
-docs/                             RENDERING, ANALYSIS, MIGRATION_FROM_FIX_MY_CHESS
-vercel.json                       cron schedule
+├── lib/api.ts                    the one place that calls the API (address, errors, ?fresh=1)
+└── lib/username.ts               the username rule, normalising typed input, shared messages
+
+apps/api/
+├── prisma/                       schema and migrations (analysed games)
+└── src/
+    ├── index.ts, worker.ts       entry points: HTTP server, and a standalone queue worker
+    ├── server.ts, bootstrap.ts   building the Fastify app and the shared connections
+    ├── config.ts                 environment variables, validated at start-up
+    ├── cors.ts, errors.ts        allowed origins (with wildcards), HttpError
+    ├── routes/                   health, players (Chess.com data), analysis (jobs, events, results)
+    ├── services/                 chessComHttp (cache, single-flight, timeouts), chesscom (typed client), jobs, repo
+    ├── queue/                    BullMQ queue, the job processor, the worker
+    └── engine/                   Stockfish as a child process over UCI
+
+packages/core/src/                analysis (win chance, classification, mistake types, time, conversion, explorer, puzzles),
+                                  game records. Plain TypeScript, 63 tests
+packages/contracts/src/           response types for every endpoint, request schemas (Zod)
 ```
-
-### `src/lib`
-
-| File | What it does |
-| --- | --- |
-| `chesscom.ts` | The only code that talks to Chess.com. One function per endpoint, a `User-Agent` header, `ChessComApiError` (keeps the HTTP status), and `playerTag()` for cache tags. Monthly game archives are fetched 4 at a time and retried once. |
-| `gameRecords.ts` | Turns raw archive games into small per-game records (result, ending, colour, opponent rating, opening). No Next.js imports. |
-| `puzzleRush.ts` | Reads Puzzle Rush numbers from a Chess.com `/stats` response. |
-| `streaks.ts` | Computes the Puzzle Rush streak from snapshots. A day is active if the attempt count went up since the previous saved day. |
-| `snapshots.ts` | `saveSnapshot()` writes today's row (shared by the Server Action and the cron job) and `recentlyTrackedUsernames()` lists who the cron job should track. |
-| `apiRoute.ts` | Route handler helpers: read and validate `?username=`, and map errors to 400, 404, 502 or 500. |
-| `username.ts` | The username rule (`[a-zA-Z0-9_-]{1,64}`), `normalizeUsername()` (trims, lowercases, accepts `@name` and profile links) and the shared error messages. Safe to import from client code. |
-| `prisma.ts` | One shared Prisma client. |
-
-### `src/features/player-dashboard`
-
-| Group | Files |
-| --- | --- |
-| Server only | `server.ts` (`getProfile`, `getOnlineStatus`), `actions.ts` (Server Actions) |
-| Entry points | `index.tsx` (`PlayerDashboard`, the client component for the whole page below the search box), `PlayerSearch.tsx` (search box for the landing and not-found pages) |
-| State and data | `hooks.ts` (`usePlayerDashboard`), `usePlayerSearch.ts`, `services.ts` (the `fetch` calls to `/api/*` and the action wrappers) |
-| Pure calculations | `derived.ts` (stats summary, rating chart), `insights.ts` (heatmap, results by colour, opponent strength, endings, openings), `gameUtils.ts`, `types.ts` |
-| Sections | `PlayerProfileSection`, `Avatar`, `StatCardsSection`, `GamesFilters`, `GamesRatingChart`, `GameInsights`, `PuzzleRushChart`, `SnapshotsTable`, `ToMoveGamesSection`, `CurrentGamesTable`, `ClubsSection`, `TournamentsSection`, `TeamMatchesSection`, `Hero`, `UsernameSearch` |
-| `Charts.tsx` | Re-exports the two components that use Recharts, so they load as one lazy chunk |
 
 ## Server and client
 
-- **Server Components:** the landing page, the player page and `PlayerProfileSection`. They run only on the server and send no JavaScript for themselves.
-- **Client Components:** `PlayerDashboard` and everything below it (they hold state and fetch in the browser), `PlayerSearch`, and `Avatar`.
-- The player page renders the profile card on the server and passes it to `PlayerDashboard` as the `profile` prop, so the card stays a Server Component inside the client tree.
+- **Server Components:** the landing page, the player page and `PlayerProfileSection`. The player page asks the API for the profile and renders the card, so the card ships no JavaScript.
+- **Client Components:** `PlayerDashboard` and everything below it, `PlayerSearch`, `Avatar`. They hold state and call the API from the browser (CORS allows the web origin).
+- The profile card is passed into `PlayerDashboard` as the `profile` prop, so it stays a Server Component inside the client tree.
 - `PlayerDashboard` is rendered with `key={username}`, so moving to another player starts from a fresh state.
 
 ## Data flow
 
-### Searching
-
-1. `usePlayerSearch` normalizes the text and checks it against the username rule. An invalid name shows a message and stops.
-2. It calls `/api/profile`. If the player does not exist, or Chess.com is down, it shows the error and the page and URL stay as they are.
-3. If the player exists it navigates to `/player/<username>` in a transition, so the current page stays usable until the next one is ready.
-
-Searching for the player already on screen is the Refresh button instead of a navigation.
-
-### Analysing games
-
-With the API (`NEXT_PUBLIC_API_URL` set), `useServerAnalysis` posts a job, follows its server-sent events for progress and reads the stored results; the worker does the engine work (see [docs/API.md](docs/API.md)). The browser fallback described below runs when no API is configured.
-
-1. The Analysis panel calls `/api/analysis-games` for the newest N standard games (with PGN). `chesscom.ts` reads monthly archives newest first and stops when it has enough.
-2. `usePlayerAnalysis` skips games already stored, starts Stockfish in a Web Worker (`stockfishClient.ts`, one position at a time) and runs `analyzeGame` on each game.
-3. Every finished game is written to IndexedDB (`storage.ts`) straight away. Stop or reload and nothing is lost.
-4. The tabs (Overview, Openings, Mistakes, Time, Games, Train) are pure functions over the stored games: `aggregate`, `patterns`, `timeStats`, `conversion`, `openingExplorer`.
-5. The Daily Blunder Deck (`useTraining`) keeps solved and failed puzzles and the streak in IndexedDB too.
-
-Each tab is wrapped so a failure in one section shows a small message instead of replacing the whole page (`SectionBoundary`).
-
 ### Opening a player page
 
-1. `proxy.ts` redirects non-canonical URLs (`/player/Hikaru` to `/player/hikaru`). A name that is not valid at all reaches the page, which shows the not-found page.
-2. `page.tsx` calls `getProfile` and `getOnlineStatus` together. `getProfile` returns `ok`, `missing` (404, shows `not-found.tsx`) or `unavailable` (the page renders without the profile card). `generateMetadata` uses the same cached call for the page title.
+1. `proxy.ts` redirects non-canonical URLs (`/player/Hikaru` to `/player/hikaru`).
+2. `page.tsx` calls `getProfile`, which calls `GET /v1/players/:username/profile` with a 60-second Next revalidation. The result is `ok`, `missing` (404, shows `not-found.tsx`) or `unavailable` (the page renders without the profile card). `generateMetadata` uses the same memoized call.
 3. The HTML is cached for 60 seconds (ISR). While it renders, `loading.tsx` is shown.
-4. In the browser `PlayerDashboard` mounts and calls `refreshAll`:
-   - saves today's snapshot (`ingestSnapshot` Server Action), then loads `/api/dashboard` (snapshots and streak);
-   - in parallel loads `/api/stats`, `/api/clubs`, `/api/tournaments`, `/api/matches`, `/api/current-games` and `/api/games` (for the chosen category and period).
-5. Each section has its own loading flag and shows a skeleton until its data arrives. A failure in one section does not break the others.
-6. Changing the category or period in `GamesFilters` reloads only `/api/games`.
+4. In the browser `PlayerDashboard` mounts and loads, in parallel, `stats`, `clubs`, `tournaments`, `matches`, `current-games` and `games` from the API. Each section has its own loading flag; a failure in one does not break the others.
+5. Changing the category or period reloads only `games`. The Refresh button reloads everything with `?fresh=1`, which makes the API skip its cache.
 
 Results are tagged with a generation number. If a newer refresh starts, answers from the older one are dropped.
 
-### Refresh
+### Searching
 
-`refreshPlayer` saves a snapshot and calls `updateTag` for the player's cache tag. That expires every Chess.com response cached for the player and the cached page, and the page is re-rendered in the same response. The reads that follow wait for it, so they get fresh data.
+`usePlayerSearch` normalises the text, checks the username rule, then calls the profile endpoint. If the player does not exist, or the API or Chess.com is down, it shows the error and the page and URL stay as they are. Otherwise it navigates in a transition, so the current page stays usable.
+
+### Analysing games
+
+1. `usePlayerAnalysis` posts `POST /v1/analysis/jobs` and opens the job's server-sent event stream.
+2. The API checks the player exists, applies its limits, and queues the job in Redis (or joins the job already running for the same request).
+3. A worker takes the job, asks Chess.com for the newest games, skips games already in Postgres, and runs Stockfish over the rest on several engine processes. Each finished game is stored at once and progress is published.
+4. The browser refreshes its list from `GET /v1/players/:username/analysis` as games finish. The tabs (Overview, Openings, Mistakes, Time, Games, Train) are pure functions over those games.
+
+Details, limits and configuration are in [docs/API.md](docs/API.md).
 
 ## Caching
 
 | Layer | What | How long |
 | --- | --- | --- |
-| Next data cache | Every Chess.com `fetch` (`next: { revalidate, tags }`) | profile, clubs, tournaments, matches: 5 minutes. Online status, stats, current games, to-move games, game archives: 1 minute |
-| ISR | The `/player/[username]` HTML | 60 seconds |
-| Request memoization | `getProfile` and `getOnlineStatus` (React `cache`) | one render |
+| API, Redis | Chess.com responses, shared by every API process | profile, clubs, tournaments, matches: 5 minutes. Stats, current games, archive list: 1 minute. A month of games (reduced to what the charts need): 6 hours for past months, 1 minute for the current one. "Player not found": 1 minute |
+| API, in process | Simultaneous requests for the same thing | one call to Chess.com, shared |
+| Next ISR | The `/player/[username]` HTML | 60 seconds |
+| React `cache()` | `getProfile` | one render |
 | Client router cache | Pages already visited, so Back is instant | managed by Next |
 
-All Chess.com responses for a player share the tag `player:<username>`.
-
-## Database
-
-Postgres through Prisma. `DATABASE_URL` is used by the app and `DATABASE_URL_UNPOOLED` by migrations.
-
-- **`PuzzleRushSnapshot`**: one row per player per UTC day, unique on `(username, asOf)`. It stores the attempt total, the score total and the best score. Chess.com has no Puzzle Rush history, so these rows are the history. Writes are upserts and only overwrite a value with a real number, never with `null`, so a bad response cannot erase a good snapshot.
-- **`DailyPuzzleCheckin`**: defined in the schema and migrations, but no code reads or writes it yet. The training streak is kept in the browser for now; when analysis moves to a backend, this table (or a successor) is where it belongs.
-
-Snapshots are written in three places: on every page load, on Refresh, and by the daily cron job.
-
-## Daily cron job
-
-`vercel.json` runs `/api/cron/snapshots` once a day. It requires `Authorization: Bearer $CRON_SECRET` and rejects everything else, so it cannot be used to hammer Chess.com. It saves a snapshot for every player looked up in the last 90 days (up to 200, four at a time), so streaks keep growing on days nobody opens a page.
+`?fresh=1` skips the Redis cache for that request and replaces the stored answer. A broken Redis never breaks a request: the cache is skipped.
 
 ## Error handling
 
-- **Route handlers:** `apiRoute.ts` maps errors to a status: 400 for a bad username, 404 when Chess.com says the player does not exist, 502 when Chess.com is rate limiting or down, 500 otherwise. The body is always JSON.
-- **Client calls:** `services.ts` reads the response defensively (a non-JSON error page does not crash it) and throws `ApiRequestError`, which keeps the status.
-- **Server rendering:** a Chess.com outage degrades the page instead of failing it. `error.tsx` catches anything unexpected.
-- **Chess.com:** an archive that cannot be loaded is reported as `missingMonths`, so a partial chart is labelled as partial. If every month fails the request fails instead of showing an empty chart.
+- **API:** one error handler maps everything to a status and a `{ error }` body: 400 for invalid input, 404 when Chess.com has no such player, 502 when Chess.com is down, rate limiting or too slow, 429 and 503 for the daily limit and a full queue, and 500 (with a generic message) for anything else. Every response carries an `x-request-id`.
+- **Web:** `lib/api.ts` reads responses defensively (a gateway's HTML error page does not crash it) and throws `ApiRequestError`, which keeps the status. Status 0 means the API could not be reached, which is never reported as "not found".
+- **Server rendering:** an API outage degrades the page instead of failing it. `error.tsx` catches anything unexpected, and `SectionBoundary` stops one broken section from replacing the whole page.
+- **Chess.com:** a month that cannot be loaded is reported as `missingMonths`, so a partial chart is labelled as partial. If every month fails the request fails instead of showing an empty chart.
 
 ## Testing and CI
 
-`npm test` runs the unit tests (63 in `packages/core`, plus the API's configuration tests). `npm run test:integration` runs 18 API tests against real Postgres, Redis and Stockfish. GitHub Actions (`.github/workflows/ci.yml`) starts Postgres and Redis and runs typecheck, both test suites and both builds on every pull request.
-
-## Puzzle Rush
-
-Puzzle Rush (chart, snapshots table, daily cron, streak) is kept but demoted to a collapsed section at the bottom of the player page. Every player page view still saves a snapshot, and the cron keeps tracking players. To remove it: delete the Puzzle Rush section from `features/player-dashboard/index.tsx`, the `ingestSnapshot` call, `/api/cron/snapshots`, `/api/dashboard`, the `PuzzleRushSnapshot` model (with a migration) and `vercel.json`'s cron.
+`npm test` runs the unit tests: 63 in `packages/core`, 14 in `apps/web` (the API helper and the fetchers) and the API's configuration tests. `npm run test:integration` runs the API's 55 tests against real Postgres, Redis and Stockfish. GitHub Actions (`.github/workflows/ci.yml`) starts Postgres and Redis and runs typecheck, both test suites and both builds on every pull request.
 
 ## Known gaps
 
-- There are no browser (end to end) tests in the repository. The flows were checked by hand with Playwright against live data; they should become automated tests.
-- Training progress (solved puzzles, streak) is still stored in the browser, so it does not follow a player between devices. Analysis results do, when the API is used.
-- The API has no accounts or authentication. Results are public and keyed by Chess.com username.
+- The web app cannot show anything without the API: it must be deployed and `NEXT_PUBLIC_API_URL` set.
+- Training progress (solved puzzles, streak) is stored in the browser, so it does not follow a player between devices. Analysis results do.
+- The API has no accounts or authentication. Results are public and keyed by Chess.com username. Limits are per client address only.
+- A puzzle answer that is not the engine's first choice is checked by Stockfish running in the browser. It could be an API call instead.
+- There are no browser (end to end) tests in the repository. The flows were checked by hand with Playwright against live data and should become automated tests.
+- Chess.com responses are typed, not validated at runtime. The game-record code reads fields defensively instead.
 - `apps/api/Dockerfile` has not been built in CI or on a machine with Docker.
-- There is no rate limiting on the `/api/*` routes or the Server Actions. The input is validated, but anyone can call them.
-- Chess.com responses are cast to types, not validated at runtime. The Puzzle Rush and game-record code read fields defensively instead.
-- `/api/online-status`, `/api/to-move-games`, `computeDailyPuzzleCalendarStreak` and the `DailyPuzzleCheckin` table are not used by the app.
 - With ISR, an unknown player renders the not-found page with status 200 and a `noindex` tag, not a 404.
-- Stockfish is GPL-3.0 and is served to the browser; the project's licence must be chosen with that in mind.
+- Stockfish is GPL-3.0 and is run on the server and served to the browser; the project's licence must be chosen with that in mind.
+
+## Removed in the backend split
+
+- **Puzzle Rush** (chart, snapshots, the daily cron job, the web app's database). Chess.com has no Puzzle Rush history, so the app used to record its own; that is gone. The old data is untouched in the old database.
+- **The online dot** on the profile card: Chess.com's `is-online` endpoint no longer exists. The card shows "Last seen" from the profile instead.
+- **In-browser game analysis.** The browser fallback needed the web app to fetch games itself. Analysis now always runs on the API.

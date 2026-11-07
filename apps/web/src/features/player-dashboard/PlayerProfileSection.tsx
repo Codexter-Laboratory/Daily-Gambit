@@ -1,10 +1,9 @@
 import { Panel } from '../../components';
-import type { OnlineStatus, PlayerProfile } from '../../lib/chesscom';
+import type { PlayerProfile } from '@daily-gambit/contracts';
 import { Avatar } from './Avatar';
 
 type PlayerProfileSectionProps = {
   profile: PlayerProfile;
-  onlineStatus: OnlineStatus | null;
 };
 
 // A fixed locale and time zone: this renders on the server, so the text must not depend on
@@ -53,7 +52,7 @@ export function PlayerProfileUnavailable({ username }: { username: string }) {
 }
 
 /** A Server Component: it ships no JavaScript of its own (only Avatar is a client component). */
-export function PlayerProfileSection({ profile, onlineStatus }: PlayerProfileSectionProps) {
+export function PlayerProfileSection({ profile }: PlayerProfileSectionProps) {
   const profileUrl = profile.url ?? `https://www.chess.com/member/${profile.username}`;
 
   return (
@@ -67,17 +66,10 @@ export function PlayerProfileSection({ profile, onlineStatus }: PlayerProfileSec
           </div>
           <div className="profileMeta">
             <span>@{profile.username}</span>
-            {onlineStatus ? (
-              <span>
-                <span
-                  className="statusDot"
-                  style={{ backgroundColor: onlineStatus.online ? 'var(--good)' : 'var(--faint)' }}
-                />
-                {onlineStatus.online
-                  ? 'Online now'
-                  : `Last seen ${formatDate(profile.last_online)}`}
-              </span>
-            ) : null}
+            <span>
+              <span className="statusDot" style={{ backgroundColor: 'var(--faint)' }} />
+              Last seen {formatDate(profile.last_online)}
+            </span>
             {profile.location ? <span>📍 {profile.location}</span> : null}
             <span>📅 Joined {formatDate(profile.joined)}</span>
             <span>👥 {profile.followers.toLocaleString('en-US')} followers</span>

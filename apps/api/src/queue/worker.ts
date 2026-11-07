@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import type { PrismaClient } from '../db.js';
 import type { Config } from '../config.js';
 import { StockfishProcess } from '../engine/stockfishProcess.js';
+import { ChessComHttp } from '../services/chessComHttp.js';
 import { ChessComClient } from '../services/chesscom.js';
 import { AnalysisRepo } from '../services/repo.js';
 import { createProcessor } from './processor.js';
@@ -13,7 +14,7 @@ export function startAnalysisWorker(config: Config, prisma: PrismaClient, log: (
   const redis = createRedis(config.REDIS_URL);
   const processor = createProcessor({
     config,
-    source: new ChessComClient(),
+    source: new ChessComClient(new ChessComHttp(redis)),
     repo: new AnalysisRepo(prisma),
     redis,
     startEngine: () => StockfishProcess.start(config.STOCKFISH_PATH),

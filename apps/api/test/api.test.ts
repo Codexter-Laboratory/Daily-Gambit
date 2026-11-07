@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { JobEvent, JobStatus, StoredAnalysisResponse } from '@daily-gambit/contracts';
-import { FakeSource, fakeGame, startStack, waitFor } from './helpers.js';
+import { ChessComError } from '../src/services/chesscom.js';
+import { FakePlayers, fakeGame, slowdown, startStack, waitFor } from './helpers.js';
 
-const source = new FakeSource([fakeGame('g1', 1_800_000_003), fakeGame('g2', 1_800_000_002), fakeGame('g3', 1_800_000_001)]);
+const source = new FakePlayers([fakeGame('g1', 1_800_000_003), fakeGame('g2', 1_800_000_002), fakeGame('g3', 1_800_000_001)]);
 let stack: Awaited<ReturnType<typeof startStack>>;
 
 beforeAll(async () => {
@@ -100,36 +101,49 @@ describe('an analysis job, end to end (real engine, Redis and Postgres)', () => 
 describe('cancelling', () => {
   it('stops a running job and keeps the games it finished', async () => {
     await stack.deps.prisma.analyzedGame.deleteMany();
-    source.games = Array.from({ length: 40 }, (_, i) => fakeGame(`c${i}`, 1_800_000_100 - i));
-    const { jobId } = (await post({ username: 'tester', limit: 40 })).json();
-    await waitFor(async () => {
-      const s = await status(jobId);
-      return s.state === 'active' && (s.progress?.done ?? 0) >= 1 ? s : undefined;
-    });
-    expect((await stack.app.inject({ method: 'DELETE', url: `/v1/analysis/jobs/${jobId}` })).statusCode).toBe(202);
-    const final = await waitFor(async () => {
-      const s = await status(jobId);
-      return s.state === 'cancelled' ? s : undefined;
-    });
-    expect(final.state).toBe('cancelled');
-    const kept = (await stack.app.inject({ url: '/v1/players/tester/analysis' })).json() as StoredAnalysisResponse;
-    expect(kept.games.length).toBeGreaterThanOrEqual(1);
-    expect(kept.games.length).toBeLessThan(40);
+    slowdown.ms = 25; // each game now takes a few hundred milliseconds, so the job outlasts the cancel
+    source.games = Array.from({ length: 100 }, (_, i) => fakeGame(`c${i}`, 1_800_000_200 - i));
+    try {
+      const { jobId } = (await post({ username: 'tester', limit: 100 })).json();
+      await waitFor(async () => {
+        const s = await status(jobId);
+        return s.state === 'active' && (s.progress?.done ?? 0) >= 1 ? s : undefined;
+      });
+      expect((await stack.app.inject({ method: 'DELETE', url: `/v1/analysis/jobs/${jobId}` })).statusCode).toBe(202);
+      const final = await waitFor(async () => {
+        const s = await status(jobId);
+        return s.state === 'cancelled' ? s : undefined;
+      });
+      expect(final.state).toBe('cancelled');
+      const kept = (await stack.app.inject({ url: '/v1/players/tester/analysis' })).json() as StoredAnalysisResponse;
+      expect(kept.games.length).toBeGreaterThanOrEqual(1);
+      expect(kept.games.length).toBeLessThan(100);
+    } finally {
+      slowdown.ms = 0;
+    }
   });
 
   it('lets the same request be queued again once the cancelled job is gone', async () => {
-    const again = await post({ username: 'tester', limit: 40 });
+    const again = await post({ username: 'tester', limit: 100 });
     expect(again.json().reused).toBe(false);
     await stack.app.inject({ method: 'DELETE', url: `/v1/analysis/jobs/${again.json().jobId}` });
+    await waitFor(async () => (await status(again.json().jobId)).state === 'cancelled');
   });
 });
 
 describe('failures', () => {
-  it('reports a missing Chess.com player as a failed job with a clear message', async () => {
-    const { ChessComError } = await import('../src/services/chesscom.js');
+  it('refuses a player Chess.com does not know before anything is queued', async () => {
+    source.missing.add('ghost');
+    const res = await post({ username: 'Ghost' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Chess.com player not found.' });
+    expect(await stack.deps.queue.getJobCounts('waiting', 'active')).toMatchObject({ waiting: 0, active: 0 });
+  });
+
+  it('reports a player who vanishes after queueing as a failed job with a clear message', async () => {
     source.failWith = new ChessComError(404, 'nope');
     try {
-      const { jobId } = (await post({ username: 'ghost' })).json();
+      const { jobId } = (await post({ username: 'vanisher' })).json();
       const final = await waitFor(async () => {
         const s = await status(jobId);
         return s.state === 'failed' ? s : undefined;

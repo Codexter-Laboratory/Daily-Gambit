@@ -8,15 +8,13 @@
     "build": "next build",
     "start": "next start",
     "analyze": "next experimental-analyze",
-    "postinstall": "prisma generate && node scripts/copy-engine.mjs",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
-    "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "vercel-build": "next build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node scripts/copy-engine.mjs"
   },
   "dependencies": {
-    "@prisma/client": "6",
     "@tailwindcss/postcss": "^4.2.2",
-    "@tanstack/react-query": "^5.94.5",
     "@vercel/analytics": "^2.0.1",
     "chess.js": "^1.4.0",
     "idb-keyval": "^6.3.0",
@@ -28,8 +26,6 @@
     "recharts": "latest",
     "stockfish": "^17.1.0",
     "tailwindcss": "^4.2.2",
-    "zod": "^4.6.5",
-    "zustand": "^5.0.12",
     "@daily-gambit/core": "*",
     "@daily-gambit/contracts": "*"
   },
@@ -37,7 +33,6 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "prisma": "6",
     "typescript": "latest",
     "vitest": "^3.2.7"
   }
