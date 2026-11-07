@@ -2,7 +2,16 @@
 
 How Daily Gambit is put together. For setup and deployment see the [README](README.md), for the rendering and caching details see [docs/RENDERING.md](docs/RENDERING.md).
 
-Daily Gambit is one Next.js (App Router) app. There is no separate backend: the server side is Server Components, route handlers and Server Actions in the same project, and the only external services are the Chess.com PubAPI and a Postgres database. The chess engine does not run on the server: Stockfish runs in a Web Worker in the browser, and analysis results are kept in the browser too (see [docs/ANALYSIS.md](docs/ANALYSIS.md)).
+Daily Gambit is an npm workspace with two services and two shared packages:
+
+```
+apps/web            Next.js (App Router): pages, Server Components, route handlers, Server Actions, Puzzle Rush
+apps/api            Fastify API and BullMQ worker: queues and runs the engine analysis, stores the results
+packages/core       the analysis logic, plain TypeScript, used by the web app and the API
+packages/contracts  the API's request schemas and response types, used by both
+```
+
+The web app is the product: it shows the account dashboard and the analysis. The **analysis API** does the heavy work (Stockfish over a player's games) in a background worker and stores the results in its own Postgres database. The two talk over HTTP and server-sent events (see [docs/API.md](docs/API.md) and [docs/BACKEND_SEPARATION.md](docs/BACKEND_SEPARATION.md)). If the web app has no `NEXT_PUBLIC_API_URL`, it falls back to running Stockfish in a Web Worker in the browser and keeping results in IndexedDB. How each number is produced is in [docs/ANALYSIS.md](docs/ANALYSIS.md). The paths below are relative to `apps/web` unless noted.
 
 ```mermaid
 flowchart LR
@@ -16,8 +25,14 @@ flowchart LR
   end
   CC[(Chess.com PubAPI)]
   DB[(Postgres)]
-  SF["Stockfish WASM<br/>(Web Worker)"]
-  IDB[("IndexedDB<br/>analysis and training")]
+  SF["Stockfish WASM<br/>(Web Worker, fallback)"]
+  IDB[("IndexedDB<br/>training, and analysis<br/>in browser mode")]
+  subgraph ApiSvc["Analysis API (apps/api)"]
+    AP["Fastify API"]
+    RD[("Redis<br/>BullMQ")]
+    WK["Worker<br/>Stockfish processes"]
+    PD[("Postgres<br/>analysed games")]
+  end
   B --> P --> PG
   B -- "fetch" --> API
   B -- "POST" --> SA
@@ -31,6 +46,11 @@ flowchart LR
   B -- "games with PGN" --> API
   B --> SF
   B --> IDB
+  B -- "jobs, SSE, results" --> AP
+  AP --> RD --> WK
+  WK --> CC
+  WK --> PD
+  AP --> PD
 ```
 
 ## Folder structure
@@ -110,6 +130,8 @@ Searching for the player already on screen is the Refresh button instead of a na
 
 ### Analysing games
 
+With the API (`NEXT_PUBLIC_API_URL` set), `useServerAnalysis` posts a job, follows its server-sent events for progress and reads the stored results; the worker does the engine work (see [docs/API.md](docs/API.md)). The browser fallback described below runs when no API is configured.
+
 1. The Analysis panel calls `/api/analysis-games` for the newest N standard games (with PGN). `chesscom.ts` reads monthly archives newest first and stops when it has enough.
 2. `usePlayerAnalysis` skips games already stored, starts Stockfish in a Web Worker (`stockfishClient.ts`, one position at a time) and runs `analyzeGame` on each game.
 3. Every finished game is written to IndexedDB (`storage.ts`) straight away. Stop or reload and nothing is lost.
@@ -168,7 +190,7 @@ Snapshots are written in three places: on every page load, on Refresh, and by th
 
 ## Testing and CI
 
-`npm test` runs Vitest unit tests for everything in `src/lib/analysis`. GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, tests and the production build on every pull request.
+`npm test` runs the unit tests (63 in `packages/core`, plus the API's configuration tests). `npm run test:integration` runs 18 API tests against real Postgres, Redis and Stockfish. GitHub Actions (`.github/workflows/ci.yml`) starts Postgres and Redis and runs typecheck, both test suites and both builds on every pull request.
 
 ## Puzzle Rush
 
@@ -177,7 +199,9 @@ Puzzle Rush (chart, snapshots table, daily cron, streak) is kept but demoted to 
 ## Known gaps
 
 - There are no browser (end to end) tests in the repository. The flows were checked by hand with Playwright against live data; they should become automated tests.
-- Analysis lives in one browser. Another device starts from nothing. A backend would fix this and let analysis run in the background.
+- Training progress (solved puzzles, streak) is still stored in the browser, so it does not follow a player between devices. Analysis results do, when the API is used.
+- The API has no accounts or authentication. Results are public and keyed by Chess.com username.
+- `apps/api/Dockerfile` has not been built in CI or on a machine with Docker.
 - There is no rate limiting on the `/api/*` routes or the Server Actions. The input is validated, but anyone can call them.
 - Chess.com responses are cast to types, not validated at runtime. The Puzzle Rush and game-record code read fields defensively instead.
 - `/api/online-status`, `/api/to-move-games`, `computeDailyPuzzleCalendarStreak` and the `DailyPuzzleCheckin` table are not used by the app.

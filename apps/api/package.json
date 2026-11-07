@@ -1,0 +1,39 @@
+{
+  "name": "@daily-gambit/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:worker": "tsx watch src/worker.ts",
+    "build": "prisma generate && tsup",
+    "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate",
+    "test:unit": "vitest run test/config.test.ts"
+  },
+  "dependencies": {
+    "@daily-gambit/contracts": "*",
+    "@daily-gambit/core": "*",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "@prisma/client": "6",
+    "bullmq": "^5.0.0",
+    "fastify": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "stockfish": "^17.1.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "prisma": "6",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "latest",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,42 +1,23 @@
 {
   "name": "daily-gambit",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "analyze": "next experimental-analyze",
-    "postinstall": "prisma generate && node scripts/copy-engine.mjs",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "dev": "npm run dev -w @daily-gambit/web",
+    "dev:api": "npm run dev -w @daily-gambit/api",
+    "build": "npm run build -w @daily-gambit/web",
+    "test": "npm run test -w @daily-gambit/core && npm run test:unit -w @daily-gambit/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:integration": "npm run test -w @daily-gambit/api",
+    "db:deploy": "npm run db:deploy -w @daily-gambit/api",
+    "services": "docker compose up -d"
   },
-  "dependencies": {
-    "@prisma/client": "6",
-    "@tailwindcss/postcss": "^4.2.2",
-    "@tanstack/react-query": "^5.94.5",
-    "@vercel/analytics": "^2.0.1",
-    "chess.js": "^1.4.0",
-    "idb-keyval": "^6.3.0",
-    "next": "latest",
-    "postcss": "^8.5.8",
-    "react": "latest",
-    "react-chessboard": "^5.12.1",
-    "react-dom": "latest",
-    "recharts": "latest",
-    "stockfish": "^17.1.0",
-    "tailwindcss": "^4.2.2",
-    "zod": "^4.6.5",
-    "zustand": "^5.0.12"
-  },
-  "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "prisma": "6",
-    "typescript": "latest",
-    "vitest": "^3.2.7"
+  "engines": {
+    "node": ">=22"
   }
 }
